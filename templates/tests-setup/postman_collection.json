@@ -1,0 +1,25 @@
+{
+  "info": {
+    "name": "{{PROJECT_NAME}} — API (tests système)",
+    "description": "Collection Postman rejouable validant l'API de bout en bout (complément des tests système Jest). TODO : ajouter les requêtes réelles (auth, CRUD, cas d'erreur) avec leurs tests (pm.test).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" }
+  ],
+  "item": [
+    {
+      "name": "Healthcheck",
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('status 200', () => pm.response.to.have.status(200))"],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}

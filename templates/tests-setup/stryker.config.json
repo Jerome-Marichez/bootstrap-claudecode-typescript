@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/master/packages/api/schema/stryker-core.json",
+  "_comment": "Stryker — tests de mutation ({{PROJECT_NAME}}). Vérifie que les tests unitaires/intégration détectent réellement les régressions. TODO : ajuster mutate au code réel.",
+  "testRunner": "jest",
+  "jest": { "configFile": "jest.config.mjs" },
+  "mutate": ["src/**/*.ts?(x)", "!src/**/*.d.ts"],
+  "coverageAnalysis": "perTest",
+  "thresholds": { "high": 80, "low": 60, "break": 50 },
+  "reporters": ["clear-text", "progress", "html"]
+}

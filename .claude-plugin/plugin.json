@@ -1,0 +1,8 @@
+{
+  "name": "bootstrap-claudecode-typescript",
+  "description": "Initialise un projet TypeScript/React avec la structure standard : README + docs/, CLAUDE.md, hooks & skills Claude Code, structure de tests (unitaire/integration/e2e/systeme), lint Biome + regle 300 lignes, workflows GitHub Actions ou GitLab CI.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Marichez Jérôme"
+  }
+}

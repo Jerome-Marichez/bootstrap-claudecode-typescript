@@ -1,0 +1,13 @@
+{
+  "name": "bootstrap-claudecode-typescript",
+  "owner": {
+    "name": "Marichez Jérôme"
+  },
+  "plugins": [
+    {
+      "name": "bootstrap-claudecode-typescript",
+      "source": "./",
+      "description": "Bootstrap de projet TypeScript/React : docs, CLAUDE.md, hooks, skills, tests, lint 300 lignes, CI GitHub/GitLab."
+    }
+  ]
+}

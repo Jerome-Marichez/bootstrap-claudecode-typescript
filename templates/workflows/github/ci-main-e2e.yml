@@ -1,0 +1,18 @@
+name: ci-main-e2e
+# Check complet (PR -> main) : parcours navigateur (Cypress) contre la stack réelle.
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  e2e:
+    name: Tests e2e (Cypress)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Installation
+        run: make install
+      - name: Tests e2e
+        run: make test-e2e

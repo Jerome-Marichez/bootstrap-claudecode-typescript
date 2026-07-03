@@ -1,0 +1,52 @@
+# .gitlab-ci.yml — {{PROJECT_NAME}}
+# Équivalent GitLab des workflows GitHub :
+#   MR -> dev  : lint (Biome + 300 lignes) + tests unitaires/intégration
+#   MR -> main : e2e + système + build
+
+image: node:24
+
+stages:
+  - lint
+  - test
+  - verify-main
+
+lint:
+  stage: lint
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"'
+  script:
+    - npx @biomejs/biome check .
+    - ./scripts/check-max-lines.sh
+
+tests:
+  stage: test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"'
+  script:
+    - make install
+    - make test-unit
+    - make test-int
+
+e2e:
+  stage: verify-main
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+  script:
+    - make install
+    - make test-e2e
+
+system:
+  stage: verify-main
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+  script:
+    - make install
+    - make test-system
+
+build:
+  stage: verify-main
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+  script:
+    - make install
+    - echo "TODO : make build"
