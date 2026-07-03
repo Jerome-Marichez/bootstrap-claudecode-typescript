@@ -2,8 +2,13 @@
 
 **Plugin Claude Code** d'initialisation rapide de projets **TypeScript / React**
 (Next.js ou Vite) avec une structure standardisée : documentation (`README.md` +
-`docs/`), `CLAUDE.md`, hooks et skills Claude Code, structure de tests, lint
-(Biome + règle **max 300 lignes / fichier**) et workflows CI (GitHub Actions ou GitLab CI).
+`docs/`), `CLAUDE.md`, hooks et skills Claude Code, structure de tests, validation
+des entrées **Zod**, lint (Biome + règle **max 300 lignes / fichier**) et workflows
+CI (GitHub Actions ou GitLab CI).
+
+> ⚠️ Plugin avant tout **personnel** : il encode *mes* conventions et habitudes de
+> travail pour m'aider à bootstrapper mes projets rapidement. Utilisable par
+> d'autres, mais les choix (structure, hooks, règles) reflètent ma façon de faire.
 
 ## Installation (plugin)
 
@@ -34,13 +39,16 @@ exécute le générateur et personnalise les fichiers.
 ./scripts/bootstrap.sh \
   --name mon-projet \
   --desc "Description courte du projet" \
-  --owner "Jérôme" \
   --layout front-back \        # ou : single (Next.js seul) | package (librairie npm)
   --framework nextjs \         # ou : vite
   --ci github \                # ou : gitlab | none
   --target ~/Desktop/mon-projet
   # options : --no-storybook --no-tests-setup --acceptance --no-git
 ```
+
+L'auteur est **toujours le compte lié à la forge** : le générateur prend le compte
+connecté à la CLI GitHub (`gh api user`), à défaut `git config user.name` ;
+`--owner "Nom"` ne sert qu'à forcer explicitement une autre valeur.
 
 ## Ce qui est généré
 
@@ -51,11 +59,15 @@ exécute le générateur et personnalise les fichiers.
 | `docs/` | 13 docs standards : architecture, testing, ci-cd, git-workflow, docker, tooling, security, accessibility, design, storybook, data-model, rgpd, ameliorations |
 | `.claude/hooks/` | `check-test-location.sh`, `check-file-length.sh` (300 lignes), `check-new-dependency.sh`, `guard-model-usage.sh` (budget crédits), `remind-docs.sh`, `remind-tests.sh` |
 | `.claude/settings.json` | Câblage des hooks PreToolUse / PostToolUse |
-| `.claude/skills/` | `/create-feat` (issue → branche dev → worktree → subagent → PR), `/merge-prod` (PR dev→main, CI vérifiée, merge humain), exemple |
-| Tests | `front/tests/{unitaire,integration,e2e}` + `back/tests/{unitaire,integration,systeme}` (front-back), `tests/{unitaire,integration,e2e}` (single) ou `tests/{unitaire,integration}` (package) — avec configs **Jest**, **Stryker** (mutation), **Cypress** (e2e) et collection **Postman** (système API), et en option `tests/acceptance/` + UAT (disponibilité, sécurité, performance, robustesse) |
+| `.claude/skills/` | `/create-issue` (template d'issue commun obligatoire, sans emoji), `/create-feat` (issue → branche dev → worktree → subagent → PR), `/merge-prod` (PR dev→main, CI vérifiée, merge humain), exemple |
+| Structure `src/` | `interfaces/` (entités `IXxx` + `types.ts`), `schemas/` (validation **Zod**), `services/` (métier), `utils/`, `components/`, `views/`, `hooks/` |
+| `shared/` (front-back) | Interfaces d'entités et schémas Zod **partagés entre front et back** (`shared/interfaces/`, `shared/schemas/`) — jamais de duplication |
+| Tests | `front/tests/{unitaire,integration,e2e}` + `back/tests/{unitaire,integration,systeme}` (front-back), `tests/{unitaire,integration,e2e,systeme}` (single) ou `tests/{unitaire,integration}` (package) — avec configs **Jest**, **Stryker** (mutation), **Cypress** (e2e) et collection **Postman** (système API), et en option `tests/acceptance/` + UAT (disponibilité, sécurité, performance, robustesse) |
 | Lint | `biome.json` + `scripts/check-max-lines.sh` (300 lignes) + `make lint` |
 | CI | GitHub : `ci-dev-lint` (Biome + 300 lignes), `ci-dev-tests`, `ci-main-e2e`, `ci-main-system`, `ci-main-build` — ou GitLab : `.gitlab-ci.yml` équivalent |
 | `Makefile` | Interface unique : install, dev, lint, test-* (unit, int, e2e, system, mutation, acceptance), storybook, docker-* |
+| `.nvmrc` | Version Node unique (24 LTS) — lue par les workflows GitHub (`node-version-file`) ; l'image GitLab (`node:24`) se bumpe avec |
+| Template d'issue | `.github/ISSUE_TEMPLATE/issue.md` ou `.gitlab/issue_templates/issue.md` — modèle **commun** (type bug/feature/documentation/autre, description, critères d'acceptation, impacts), imposé par le skill `/create-issue`, sans emoji |
 | Git | `git init` + commit de bootstrap + branches `main` et `dev` |
 
 ## Hooks embarqués
@@ -100,6 +112,19 @@ La mise en production passe par `/merge-prod` (merge humain uniquement).
 
 - **`src/interfaces/`** : toutes les interfaces d'entités, préfixées `I` (`IProduct`) ;
   `src/interfaces/types.ts` pour les alias de types purs uniquement.
+- **Validation des entrées — Zod (obligatoire)** : toute entrée externe (body/query
+  d'API, formulaire, webhook, env) est validée par un schéma Zod de `schemas/`
+  (`product.schema.ts`) ; types dérivés par `z.infer`, jamais de cast direct.
+  En layout front-back, les schémas communs vivent dans `shared/schemas/`.
+- **Découpage par domaine métier** : quand l'app
+  grandit, le code front se regroupe par domaine sous `src/@<domaine>/` (`@core`,
+  `@vitrine`, `@shared`…), chaque domaine portant ses `components/`, `hooks/`,
+  `services/`, `utils/`, `interfaces/`.
+- **Composant = un dossier** : `components/Button/index.tsx` + styles/assets
+  colocalisés (`button.module.css`) ; composants purs par défaut, les non-purs
+  (store, réseau, auth) isolés dans `_notPure/`.
+- **`views/` vs `pages/`** : `pages/` (ou `app/`) ne fait que le routage ; les
+  sections d'écran composées vivent dans `src/views/<domaine>/`.
 - **Nommage des fichiers** : PascalCase pour les composants et vues (`Button.tsx`,
   `HomeView.tsx`) ; minuscules pour tout le reste (services, hooks, utilitaires).
 - **Nommage des symboles** : PascalCase pour les **interfaces** (`IProduct`), les
@@ -119,3 +144,10 @@ La mise en production passe par `/merge-prod` (merge humain uniquement).
 Les templates vivent dans `templates/`. Tokens substitués : `{{PROJECT_NAME}}`,
 `{{PROJECT_DESC}}`, `{{OWNER}}`, `{{FRAMEWORK}}`. Modifier un template ici met à
 jour tous les futurs projets.
+
+## Développement du plugin
+
+`./scripts/smoke-test.sh` génère les trois layouts dans un dossier temporaire et
+vérifie les invariants : structure, substitution des tokens, filtrage CI par
+layout, comportement des hooks. La CI du repo (`.github/workflows/ci.yml`)
+l'exécute à chaque push/PR.

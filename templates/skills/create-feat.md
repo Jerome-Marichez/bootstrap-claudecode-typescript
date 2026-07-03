@@ -25,11 +25,8 @@ principale reste propre et plusieurs fonctionnalités peuvent avancer en parall�
 1. **Clarifier le besoin** : titre court + description (quoi, pourquoi, critères
    d'acceptation). Si le besoin est flou, poser la question via AskUserQuestion.
 
-2. **Créer l'issue** :
-   ```bash
-   gh issue create --title "<titre>" --body "<description + critères d'acceptation>"
-   ```
-   (GitLab : `glab issue create`.) Noter le numéro `#N`.
+2. **Créer l'issue via `/create-issue`** (obligatoire — template d'issue commun,
+   type `feature`, titre `feature: <résumé>`, sans emoji). Noter le numéro `#N`.
 
 3. **Créer la branche depuis `dev` à jour + le worktree dédié** :
    ```bash
@@ -38,6 +35,8 @@ principale reste propre et plusieurs fonctionnalités peuvent avancer en parall�
    ```
    La branche est créée directement depuis `origin/dev` et vit dans sa propre copie
    du dépôt — la copie principale n'est pas touchée.
+   (Pas encore de remote ? Créer d'abord le dépôt distant — `gh repo create` — et
+   pousser `main` + `dev` ; à défaut, dériver de la branche locale : `-b feature/<nom> dev`.)
 
 4. **Déléguer à un subagent dédié** : lancer UN subagent (Agent tool) dont le prompt
    contient :

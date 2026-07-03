@@ -47,7 +47,7 @@ case "$tool" in
       newdeps=$(printf '%s' "$input" | jq -r '.tool_input.new_string // empty' \
         | grep -oE '"@?[A-Za-z0-9._/-]+"[[:space:]]*:[[:space:]]*"[~^>=<]?[0-9]' \
         | sed -E 's/^"([^"]+)".*/\1/' \
-        | grep -vE '^version$')
+        | grep -vE '^(version|node|npm|pnpm|yarn|bun|packageManager)$')
     fi
     olddeps=""
     [ -f "$file" ] && olddeps=$(jq -r '(.dependencies // {}) + (.devDependencies // {}) | keys[]' "$file" 2>/dev/null)

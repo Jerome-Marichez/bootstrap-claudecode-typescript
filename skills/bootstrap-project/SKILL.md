@@ -35,17 +35,26 @@ Pose ces questions (regroupe-les en un ou deux appels AskUserQuestion) :
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/scripts/bootstrap.sh \
-  --name <nom> --desc "<description>" --owner "<prénom de l'utilisateur>" \
+  --name <nom> --desc "<description>" \
   --layout <front-back|single|package> --framework <nextjs|vite> \
   --ci <github|gitlab|none> [--no-storybook] [--no-tests-setup] [--acceptance] \
   --target <dossier>
 ```
 
+**Ne pas passer `--owner`** : l'auteur est toujours le compte lié à la forge —
+le générateur prend le compte connecté à la CLI GitHub (`gh api user`), à défaut
+`git config user.name`. `--owner` ne sert qu'à forcer explicitement autre chose.
+
 Le générateur crée : README.md, CLAUDE.md, docs/ (13 docs), .claude/ (hooks :
 emplacement des tests, 300 lignes, dépendances, budget crédits, rappels doc/tests ;
-settings.json ; skills `/create-feat`, `/merge-prod`), structure de tests + configs
-Jest/Stryker/Cypress/Postman, `src/interfaces/` (entités `IXxx` + `types.ts`),
-Makefile, biome.json, scripts/check-max-lines.sh, workflows CI, git init (main + dev).
+settings.json ; skills `/create-issue`, `/create-feat`, `/merge-prod`), structure
+de tests + configs Jest/Stryker/Cypress/Postman, `src/interfaces/` (entités `IXxx`
++ `types.ts`), `src/schemas/` (validation **Zod** des entrées),
+`src/{components,views,hooks,services,utils}`, `shared/{interfaces,schemas}`
+(layout front-back : entités et schémas partagés front/back), Makefile, biome.json,
+`.nvmrc` (version Node unique), scripts/check-max-lines.sh, workflows CI, template
+d'issue commun (`.github/ISSUE_TEMPLATE/` ou `.gitlab/issue_templates/`),
+git init (main + dev).
 
 ## 3. Personnaliser (obligatoire)
 
@@ -55,9 +64,14 @@ connu grâce à la conversation :
 - **README.md / CLAUDE.md** : remplacer les TODO de présentation par le périmètre réel
   décrit par l'utilisateur (fonctionnalités, contraintes, choix techniques).
 - **docs/architecture.md** : premiers choix techniques connus.
+- **Layout `single` ou `package`** : adapter les tableaux de tests de CLAUDE.md et
+  docs/testing.md aux chemins réels (`tests/...` à la racine, pas `front/`/`back/` ;
+  pour un `package`, retirer les volets e2e/système/Cypress/Postman et Docker).
 - Si l'utilisateur veut initialiser le code tout de suite : `create-next-app` /
-  `create vite` dans le(s) bon(s) dossier(s), puis câbler les cibles réelles du
-  Makefile (install, dev, lint, test-*, build) et commit sur une branche dédiée.
+  `create vite` dans le(s) bon(s) dossier(s), **installer Zod** (`npm install zod` —
+  la validation des entrées via `schemas/` est obligatoire, voir CLAUDE.md), puis
+  câbler les cibles réelles du Makefile (install, dev, lint, test-*, build) et commit
+  sur une branche dédiée.
 
 ## 4. Vérification finale
 

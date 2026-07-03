@@ -12,6 +12,14 @@ coverage/
 .env.local
 .env.*.local
 
+# Artefacts d'outils de test / build
+storybook-static/
+.stryker-tmp/
+reports/
+cypress/screenshots/
+cypress/videos/
+*.tsbuildinfo
+
 # OS / IDE
 .DS_Store
 *.log

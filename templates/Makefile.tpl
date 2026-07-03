@@ -2,7 +2,7 @@
 # Interface de commandes unique (local + CI). `make help` liste les cibles.
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev lint test test-unit test-int test-e2e test-system docker-up docker-down logs
+.PHONY: help install dev lint test test-unit test-int test-e2e test-system test-mutation test-acceptance storybook storybook-build docker-up docker-down logs
 
 help: ## Liste les commandes disponibles
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -14,7 +14,7 @@ dev: ## Démarrage local en mode développement
 	@echo "TODO : démarrer l'app (next dev / vite dev + back)"
 
 lint: ## Biome sur tout le dépôt + limite 300 lignes/fichier
-	npx @biomejs/biome check .
+	npx @biomejs/biome@2.0.0 check .
 	./scripts/check-max-lines.sh
 
 test: test-unit test-int ## Tests unitaires + intégration (rapides)

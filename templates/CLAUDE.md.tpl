@@ -6,7 +6,8 @@
 
 <!-- TODO : compléter — périmètre fonctionnel, contraintes techniques, choix retenus. -->
 
-**Stack** : TypeScript — {{FRAMEWORK}} (front) ; Node.js/TypeScript (back le cas échéant).
+**Stack** : TypeScript — {{FRAMEWORK}} (front) ; Node.js/TypeScript (back le cas
+échéant) ; **Zod** pour la validation des entrées.
 
 > Projet géré par {{OWNER}}.
 
@@ -29,14 +30,19 @@ Le projet suit **toujours** un modèle à deux branches permanentes :
    **branche `feature/<nom>` dérivée de `dev`** → **worktree dédié** → **subagent dédié**
    qui implémente dans ce worktree et ouvre la PR vers `dev`. Ce processus s'applique
    **aussi hors plan mode**, sans exception.
-4. **Fusion d'une PR — la nuance `dev` vs `main`.**
+4. **Toute issue passe par `/create-issue`** (skill **obligatoire**), quel que soit
+   son type (`bug`, `feature`, `documentation`, `autre`) : le **template d'issue
+   commun** du dépôt (`.github/ISSUE_TEMPLATE/issue.md` ou
+   `.gitlab/issue_templates/issue.md`) est rempli intégralement, titre au format
+   `<type>: <résumé court>`, **jamais d'emoji** — pas d'issue en texte libre.
+5. **Fusion d'une PR — la nuance `dev` vs `main`.**
    - **Vers `dev`** : dès que **tous les checks CI sont au vert**, la fusion est **autorisée en auto-merge** — l'assistant **peut fusionner lui-même** la PR.
    - **Vers `main`** (mise en production) : passe **obligatoirement** par le skill `/merge-prod` — PR ouverte et remplie par l'assistant après vérification de la CI de `dev`, mais **l'assistant n'a PAS le droit de la fusionner** — seule une **validation humaine** ({{OWNER}}) peut merger dans `main`.
-5. **Hotfix** : `hotfix/<nom>` depuis `main`, fusionné dans `main` **et** `dev`.
-6. **`main` est une branche protégée** : push direct interdit, PR obligatoire, checks CI au vert, revue approuvée. Détails : [`docs/git-workflow.md`](./docs/git-workflow.md).
-7. **Intégrité des contrôles — aucun truquage.** L'assistant ne doit **jamais** modifier, désactiver, supprimer, ignorer (`skip`/`xfail`) ou affaiblir un **test**, une **assertion**, ni un **fichier de configuration CI/CD** (workflows, seuils de couverture, linters, limite de lignes…) dans le but de faire passer artificiellement la CI ou de masquer une régression. Les checks passent au vert **par une correction réelle du code**. Une évolution légitime d'un test reste possible, mais doit être **justifiée et documentée** dans la PR.
-8. **Pas d'auto-modification des règles.** L'assistant ne modifie **jamais** ce `CLAUDE.md`, un skill, un hook ou toute règle du projet **pour contourner** les consignes. Toute évolution de ces règles se fait à la demande explicite de {{OWNER}}.
-9. **CI en échec — corriger puis escalader.** L'assistant retente 2 à 3 fois en corrigeant réellement, puis **signale à {{OWNER}}** avec un diagnostic clair si le blocage persiste.
+6. **Hotfix** : `hotfix/<nom>` depuis `main`, fusionné dans `main` **et** `dev`.
+7. **`main` est une branche protégée** : push direct interdit, PR obligatoire, checks CI au vert, revue approuvée. Détails : [`docs/git-workflow.md`](./docs/git-workflow.md).
+8. **Intégrité des contrôles — aucun truquage.** L'assistant ne doit **jamais** modifier, désactiver, supprimer, ignorer (`skip`/`xfail`) ou affaiblir un **test**, une **assertion**, ni un **fichier de configuration CI/CD** (workflows, seuils de couverture, linters, limite de lignes…) dans le but de faire passer artificiellement la CI ou de masquer une régression. Les checks passent au vert **par une correction réelle du code**. Une évolution légitime d'un test reste possible, mais doit être **justifiée et documentée** dans la PR.
+9. **Pas d'auto-modification des règles.** L'assistant ne modifie **jamais** ce `CLAUDE.md`, un skill, un hook ou toute règle du projet **pour contourner** les consignes. Toute évolution de ces règles se fait à la demande explicite de {{OWNER}}.
+10. **CI en échec — corriger puis escalader.** L'assistant retente 2 à 3 fois en corrigeant réellement, puis **signale à {{OWNER}}** avec un diagnostic clair si le blocage persiste.
 
 ## Politique de tests
 
@@ -103,6 +109,28 @@ indisponible) est **refusé**.
   `src/interfaces/` (un fichier par entité) et leur nom **commence toujours par `I`**
   (`IProduct`, `IUser`…). Les **alias de types purs** (unions, utilitaires) vont dans
   `src/interfaces/types.ts` — uniquement des `type`, jamais d'interface.
+- **`shared/` (layout front-back)** : les interfaces d'entités et schémas Zod
+  **partagés entre le front et le back** vivent dans `shared/` à la racine
+  (`shared/interfaces/`, `shared/schemas/`) — **jamais de duplication** d'une même
+  entité côté front et côté back.
+- **Validation des entrées — Zod (obligatoire)** : toute entrée externe (body/query
+  d'API, formulaire, webhook, variables d'environnement) est validée par un schéma
+  **Zod** avant usage. Les schémas vivent dans `schemas/` (un fichier par entité,
+  `product.schema.ts` ; dans `shared/schemas/` si partagé front-back) et les types
+  d'entrée sont **dérivés du schéma** (`z.infer`), jamais l'inverse. Aucun cast
+  direct (`as`) d'une donnée externe.
+- **Composant = un dossier** : chaque composant React vit dans son dossier PascalCase
+  avec un `index.tsx` et ses styles/assets **colocalisés**
+  (`components/Button/index.tsx` + `button.module.css`). Les composants sont **purs**
+  par défaut ; ceux qui portent des effets (store, réseau, auth…) sont isolés dans un
+  sous-dossier **`_notPure/`**.
+- **`views/` vs `pages/`** : `pages/` (ou `app/`) ne fait **que le routage** ; les
+  sections d'écran composées vivent dans `src/views/<domaine>/` et assemblent les
+  composants.
+- **Découpage par domaine** : quand l'app grandit, regrouper le code front par domaine
+  métier sous `src/@<domaine>/` (ex. `@core` pour le socle applicatif, `@vitrine` pour
+  le site public, `@shared` pour le transverse), chaque domaine portant ses propres
+  `components/`, `hooks/`, `services/`, `utils/`, `interfaces/`.
 
 ## Politique de documentation
 
@@ -118,11 +146,12 @@ indisponible) est **refusé**.
 
 ## Skills projet (`.claude/skills/`)
 
-Deux skills **obligatoires** encadrent le cycle de vie :
+Trois skills **obligatoires** encadrent le cycle de vie :
 
 | Skill | Usage |
 |-------|-------|
-| `/create-feat` | **Obligatoire** pour démarrer toute fonctionnalité : issue → branche depuis `dev` → worktree → subagent dédié → PR vers `dev`. |
+| `/create-issue` | **Obligatoire** pour créer toute issue (`bug`, `feature`, `documentation`, `autre`) : template d'issue commun rempli intégralement, titre `<type>: <résumé>`, jamais d'emoji. |
+| `/create-feat` | **Obligatoire** pour démarrer toute fonctionnalité : issue (via `/create-issue`) → branche depuis `dev` → worktree → subagent dédié → PR vers `dev`. |
 | `/merge-prod` | **Obligatoire** pour toute mise en production : vérifier la CI de `dev`, ouvrir la PR `dev` → `main`, surveiller les checks — **sans jamais merger** (validation humaine). |
 
 Ajouter ici les procédures récurrentes du projet (build, déploiement, fixes connus).

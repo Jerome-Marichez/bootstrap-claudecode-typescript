@@ -5,6 +5,7 @@
 #   front/tests/integration/**/*.integration.spec.ts(x)
 #   front/tests/e2e/**/*.cy.ts
 #   back/tests/{unitaire,integration,systeme}/**/*.test.ts
+#   tests/acceptance/**/*.test.ts (acceptation / UAT, si activé)
 # Layout single : tests/{unitaire,integration,e2e,systeme}/ à la racine.
 # Référence : docs/testing.md. Ne bloque pas Edit (fichiers déjà à leur place).
 
@@ -39,6 +40,7 @@ case "$f" in
     ;;
   *.test.ts)
     case "$f" in
+      */tests/acceptance/*|tests/acceptance/*) exit 0 ;;
       */back/tests/unitaire/*|back/tests/unitaire/*) exit 0 ;;
       */back/tests/integration/*|back/tests/integration/*) exit 0 ;;
       */back/tests/systeme/*|back/tests/systeme/*) exit 0 ;;

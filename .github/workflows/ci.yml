@@ -1,0 +1,14 @@
+name: ci
+# CI du plugin : smoke test du générateur (trois layouts + invariants + hooks).
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  smoke:
+    name: Smoke test du générateur
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke test (3 layouts)
+        run: ./scripts/smoke-test.sh

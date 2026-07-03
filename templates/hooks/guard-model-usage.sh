@@ -32,7 +32,7 @@ tokens=$(printf '%s' "$block" | jq -r '.totalTokens // 0')
 end=$(printf '%s' "$block" | jq -r '.endTime // empty')
 [ -z "$end" ] && exit 0
 
-end_epoch=$(date -j -f '%Y-%m-%dT%H:%M:%S' "$(printf '%s' "$end" | cut -c1-19)" +%s 2>/dev/null \
+end_epoch=$(date -j -u -f '%Y-%m-%dT%H:%M:%S' "$(printf '%s' "$end" | cut -c1-19)" +%s 2>/dev/null \
          || date -d "$end" +%s 2>/dev/null)
 [ -z "$end_epoch" ] && exit 0
 

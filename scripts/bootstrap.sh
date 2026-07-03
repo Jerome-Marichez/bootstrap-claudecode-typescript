@@ -5,7 +5,7 @@
 #   ./scripts/bootstrap.sh --name mon-projet --target ~/Desktop/mon-projet \
 #       [--desc "Description"] [--owner "Jérôme"] \
 #       [--layout front-back|single|package] [--framework nextjs|vite] \
-#       [--ci github|gitlab|none] [--no-storybook] [--no-tests-setup] [--no-git]
+#       [--ci github|gitlab|none] [--no-storybook] [--no-tests-setup] [--acceptance] [--no-git]
 #
 #   --no-tests-setup : ne pose pas l'outillage de tests (Jest + Stryker pour
 #   unitaire/intégration, Cypress pour e2e, Postman pour le système API) —
@@ -22,7 +22,7 @@ TPL="$ROOT/templates"
 
 NAME=""
 DESC=""
-OWNER="Marichez Jérôme"
+OWNER=""   # défaut : compte connecté à la CLI GitHub (gh api user), sinon git config user.name
 LAYOUT="front-back"
 FRAMEWORK="nextjs"
 CI="github"
@@ -51,8 +51,15 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$NAME" ]   || { echo "--name est obligatoire" >&2; exit 1; }
+case "$NAME" in *[!a-z0-9-]*) echo "--name doit être en kebab-case (a-z, 0-9, tirets)" >&2; exit 1 ;; esac
 [ -n "$TARGET" ] || { echo "--target est obligatoire" >&2; exit 1; }
 [ -n "$DESC" ]   || DESC="Projet $NAME"
+if [ -z "$OWNER" ]; then
+  # L'auteur est TOUJOURS le compte lié à la forge : celui connecté à la CLI gh.
+  OWNER=$(gh api user --jq '.name // .login' 2>/dev/null || true)
+  [ -z "$OWNER" ] && OWNER=$(git config user.name 2>/dev/null || true)
+  [ -z "$OWNER" ] && { echo "--owner requis : aucun compte gh connecté (gh auth login) ni git config user.name" >&2; exit 1; }
+fi
 case "$LAYOUT" in front-back|single|package) ;; *) echo "--layout doit être front-back, single ou package" >&2; exit 1 ;; esac
 case "$FRAMEWORK" in nextjs|vite) ;; *) echo "--framework doit être nextjs ou vite" >&2; exit 1 ;; esac
 case "$CI" in github|gitlab|none) ;; *) echo "--ci doit être github, gitlab ou none" >&2; exit 1 ;; esac
@@ -94,8 +101,15 @@ if [ "$STORYBOOK" = 0 ]; then
   done
 fi
 
-echo "→ Outillage (Makefile, biome.json, .gitignore, scripts/)"
+echo "→ Outillage (Makefile, biome.json, .gitignore, .nvmrc, scripts/)"
+printf '24\n' > "$TARGET/.nvmrc"   # version Node unique (workflows via node-version-file)
 render "$TPL/Makefile.tpl"   "$TARGET/Makefile"
+if [ "$STORYBOOK" = 0 ]; then
+  # Retire les cibles Storybook du Makefile (et de .PHONY).
+  awk '/^storybook(-build)?:/{skip=1;next} skip&&/^\t/{next} skip&&/^$/{skip=0;next} {skip=0;print}' \
+    "$TARGET/Makefile" > "$TARGET/Makefile.tmp" && mv "$TARGET/Makefile.tmp" "$TARGET/Makefile"
+  sed 's/ storybook storybook-build//' "$TARGET/Makefile" > "$TARGET/Makefile.tmp" && mv "$TARGET/Makefile.tmp" "$TARGET/Makefile"
+fi
 render "$TPL/biome.json"     "$TARGET/biome.json"
 render "$TPL/gitignore.tpl"  "$TARGET/.gitignore"
 mkdir -p "$TARGET/scripts"
@@ -115,18 +129,38 @@ for f in "$TPL"/skills/*.md; do
   render "$f" "$TARGET/.claude/skills/$skill/SKILL.md"
 done
 
-echo "→ Convention interfaces/ + types.ts + services/ + utils/"
+echo "→ Convention interfaces/ + schemas/ (Zod) + services/ + utils/ + components/ + views/"
 if [ "$LAYOUT" = "front-back" ]; then
-  mkdir -p "$TARGET/front/src/interfaces" "$TARGET/front/src/services" "$TARGET/front/src/utils" \
-           "$TARGET/back/src/interfaces"  "$TARGET/back/src/services"  "$TARGET/back/src/utils"
+  mkdir -p "$TARGET/front/src/interfaces" "$TARGET/front/src/schemas" "$TARGET/front/src/services" \
+           "$TARGET/front/src/utils" "$TARGET/front/src/components" "$TARGET/front/src/views" \
+           "$TARGET/front/src/hooks" \
+           "$TARGET/back/src/interfaces" "$TARGET/back/src/schemas" "$TARGET/back/src/services" \
+           "$TARGET/back/src/utils"
   render "$TPL/interfaces-types.ts" "$TARGET/front/src/interfaces/types.ts"
   render "$TPL/interfaces-types.ts" "$TARGET/back/src/interfaces/types.ts"
-  touch "$TARGET/front/src/services/.gitkeep" "$TARGET/back/src/services/.gitkeep" \
-        "$TARGET/front/src/utils/.gitkeep"    "$TARGET/back/src/utils/.gitkeep"
-else
-  mkdir -p "$TARGET/src/interfaces" "$TARGET/src/services" "$TARGET/src/utils"
-  render "$TPL/interfaces-types.ts" "$TARGET/src/interfaces/types.ts"
+  for d in front/src/services front/src/utils front/src/components front/src/views front/src/hooks \
+           back/src/services back/src/utils; do
+    touch "$TARGET/$d/.gitkeep"
+  done
+  # shared/ : interfaces & schémas Zod partagés entre le front et le back.
+  mkdir -p "$TARGET/shared/interfaces" "$TARGET/shared/schemas"
+  render "$TPL/interfaces-types.ts"   "$TARGET/shared/interfaces/types.ts"
+  render "$TPL/zod-schema-example.ts" "$TARGET/shared/schemas/exemple.schema.ts"
+  render "$TPL/zod-schema-example.ts" "$TARGET/front/src/schemas/exemple.schema.ts"
+  render "$TPL/zod-schema-example.ts" "$TARGET/back/src/schemas/exemple.schema.ts"
+elif [ "$LAYOUT" = "package" ]; then
+  mkdir -p "$TARGET/src/interfaces" "$TARGET/src/schemas" "$TARGET/src/services" "$TARGET/src/utils"
+  render "$TPL/interfaces-types.ts"   "$TARGET/src/interfaces/types.ts"
+  render "$TPL/zod-schema-example.ts" "$TARGET/src/schemas/exemple.schema.ts"
   touch "$TARGET/src/services/.gitkeep" "$TARGET/src/utils/.gitkeep"
+else
+  mkdir -p "$TARGET/src/interfaces" "$TARGET/src/schemas" "$TARGET/src/services" "$TARGET/src/utils" \
+           "$TARGET/src/components" "$TARGET/src/views" "$TARGET/src/hooks"
+  render "$TPL/interfaces-types.ts"   "$TARGET/src/interfaces/types.ts"
+  render "$TPL/zod-schema-example.ts" "$TARGET/src/schemas/exemple.schema.ts"
+  for d in src/services src/utils src/components src/views src/hooks; do
+    touch "$TARGET/$d/.gitkeep"
+  done
 fi
 
 echo "→ Structure de tests (layout : $LAYOUT)"
@@ -143,8 +177,9 @@ elif [ "$LAYOUT" = "package" ]; then
     touch "$TARGET/$d/.gitkeep"
   done
 else
-  mkdir -p "$TARGET/src" "$TARGET/tests/unitaire" "$TARGET/tests/integration" "$TARGET/tests/e2e"
-  for d in tests/unitaire tests/integration tests/e2e; do
+  mkdir -p "$TARGET/src" "$TARGET/tests/unitaire" "$TARGET/tests/integration" \
+           "$TARGET/tests/e2e" "$TARGET/tests/systeme"
+  for d in tests/unitaire tests/integration tests/e2e tests/systeme; do
     touch "$TARGET/$d/.gitkeep"
   done
 fi
@@ -169,7 +204,7 @@ if [ "$TESTS_SETUP" = 1 ]; then
   if [ "$LAYOUT" = "front-back" ]; then
     render "$TPL/tests-setup/postman_collection.json" "$TARGET/back/tests/systeme/postman_collection.json"
   elif [ "$LAYOUT" = "single" ]; then
-    render "$TPL/tests-setup/postman_collection.json" "$TARGET/tests/postman_collection.json"
+    render "$TPL/tests-setup/postman_collection.json" "$TARGET/tests/systeme/postman_collection.json"
   fi
 fi
 
@@ -185,11 +220,11 @@ fi
 echo "→ CI ($CI)"
 case "$CI" in
   github)
-    mkdir -p "$TARGET/.github/workflows"
+    mkdir -p "$TARGET/.github/workflows" "$TARGET/.github/ISSUE_TEMPLATE"
+    render "$TPL/issue-template.md" "$TARGET/.github/ISSUE_TEMPLATE/issue.md"
     for f in "$TPL"/workflows/github/*.yml; do
       base="$(basename "$f")"
-      # Les jobs back/e2e/system n'ont pas de sens selon le layout.
-      if [ "$LAYOUT" = "single" ] && [ "$base" = "ci-main-system.yml" ]; then continue; fi
+      # Les jobs e2e/system n'ont pas de sens pour un package.
       if [ "$LAYOUT" = "package" ]; then
         case "$base" in ci-main-system.yml|ci-main-e2e.yml) continue ;; esac
       fi
@@ -197,7 +232,17 @@ case "$CI" in
     done
     ;;
   gitlab)
+    mkdir -p "$TARGET/.gitlab/issue_templates"
+    # GitLab affiche le frontmatter YAML comme du texte : on le retire.
+    render "$TPL/issue-template.md" "$TARGET/.gitlab/issue_templates/issue.md"
+    sed '1,/^---$/d' "$TARGET/.gitlab/issue_templates/issue.md" > "$TARGET/.gitlab/issue_templates/issue.md.tmp" \
+      && mv "$TARGET/.gitlab/issue_templates/issue.md.tmp" "$TARGET/.gitlab/issue_templates/issue.md"
     render "$TPL/workflows/gitlab/gitlab-ci.yml" "$TARGET/.gitlab-ci.yml"
+    if [ "$LAYOUT" = "package" ]; then
+      # Même filtrage que côté GitHub : pas de jobs e2e/system pour un package.
+      awk '/^[a-zA-Z0-9_-]+:/{skip=($0=="e2e:"||$0=="system:")} !skip' \
+        "$TARGET/.gitlab-ci.yml" > "$TARGET/.gitlab-ci.yml.tmp" && mv "$TARGET/.gitlab-ci.yml.tmp" "$TARGET/.gitlab-ci.yml"
+    fi
     ;;
   none) ;;
 esac
@@ -221,7 +266,11 @@ elif [ "$FRAMEWORK" = "nextjs" ]; then
 else
   echo "   2. Initialiser le code : npm create vite@latest (react-ts) + back selon le layout."
 fi
-echo "   3. Adapter le Makefile aux commandes réelles du projet."
+echo "   3. Installer Zod (npm install zod) — validation des entrées obligatoire (schemas/)."
+echo "   4. Adapter le Makefile aux commandes réelles du projet."
 if [ "$STORYBOOK" = 1 ]; then
-  echo "   4. Initialiser Storybook : npx storybook@latest init (voir docs/storybook.md)."
+  echo "   5. Initialiser Storybook : npx storybook@latest init (voir docs/storybook.md)."
+  echo "   6. Créer le dépôt distant (gh repo create), pousser main + dev, protéger main."
+else
+  echo "   5. Créer le dépôt distant (gh repo create), pousser main + dev, protéger main."
 fi
