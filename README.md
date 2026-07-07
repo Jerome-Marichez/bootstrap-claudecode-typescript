@@ -70,6 +70,31 @@ connecté à la CLI GitHub (`gh api user`), à défaut `git config user.name` ;
 | Template d'issue | `.github/ISSUE_TEMPLATE/issue.md` ou `.gitlab/issue_templates/issue.md` — modèle **commun** (type bug/feature/documentation/autre, description, critères d'acceptation, impacts), imposé par le skill `/create-issue`, sans emoji |
 | Git | `git init` + commit de bootstrap + branches `main` et `dev` |
 
+## Benchmark — tokens économisés
+
+Le générateur écrit 39 à 49 fichiers (~1 500 lignes) en une seule commande shell.
+Sans le plugin, Claude Opus 4.8 devrait produire chaque fichier via des appels
+`Write` — c'est-à-dire émettre tout leur contenu en tokens de sortie.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/benchmark-dark.svg">
+  <img src="assets/benchmark-light.svg" alt="Tokens de sortie estimés par layout : sans plugin ≈ 18 400 à 20 400 tokens (Opus 4.8 écrivant chaque fichier), avec plugin ≈ 700 tokens, soit ~96-97 % d'économie" width="760">
+</picture>
+
+| Layout | Fichiers | Lignes | Sans plugin (Opus 4.8, est.) | Avec plugin (est.) | Économie |
+|---|---|---|---|---|---|
+| `front-back` | 49 | ~1 600 | ≈ 20 400 tokens | ≈ 700 tokens | **≈ 97 %** |
+| `single` | 43 | ~1 500 | ≈ 19 200 tokens | ≈ 700 tokens | **≈ 96 %** |
+| `package` | 39 | ~1 450 | ≈ 18 400 tokens | ≈ 700 tokens | **≈ 96 %** |
+
+**Méthodologie** (estimation, pas une mesure API) : contenu réellement généré par
+`bootstrap.sh --acceptance` mesuré en caractères puis converti à ~4 caractères/token,
+plus un surcoût d'environ 60 tokens par appel `Write` (chemin + enrobage JSON).
+Côté plugin : chargement de la skill, un appel Bash et le résumé (~700 tokens).
+L'économie réelle est supérieure : sans générateur, le modèle relit et raisonne
+sur chaque fichier (tokens d'entrée et de réflexion non comptés ici), avec un
+résultat moins déterministe d'une exécution à l'autre.
+
 ## Hooks embarqués
 
 | Hook | Événement | Rôle |
