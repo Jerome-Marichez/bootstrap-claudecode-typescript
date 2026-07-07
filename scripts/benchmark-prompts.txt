@@ -1,0 +1,16 @@
+# Charge de travail fixe du benchmark de routage (scripts/benchmark-routing.sh).
+# Format : <catégorie attendue><TAB><prompt>. Rejouée dans l'ordre, identique
+# pour les deux bras. Catégories : mecanique / dev / archi (attendu du routage,
+# sert uniquement au rapport — le routage réel est décidé par route-task.sh).
+mecanique	Ajoute .DS_Store au .gitignore
+mecanique	Renomme le fichier src/schemas/exemple.schema.ts en todo.schema.ts et mets à jour les imports
+mecanique	Trouve le fichier de config Jest et donne-moi juste son nom
+mecanique	Ajoute une section "## Licence" avec "MIT" à la fin du README.md puis commit
+dev	Crée un schéma Zod Todo (id: string, titre: string, fait: boolean) dans src/schemas/todo.schema.ts avec ses tests unitaires
+dev	Implémente un composant TodoList dans src/components qui affiche une liste de todos passée en props (titre barré si fait), avec ses tests unitaires
+dev	Ajoute un hook useTodos dans src/hooks avec ajout, suppression et bascule d'une todo, avec ses tests unitaires
+dev	Ajoute un service todo.storage dans src/services qui persiste les todos en localStorage (load/save), avec ses tests unitaires
+dev	Ajoute au hook useTodos un filtre toutes/actives/terminees, avec ses tests unitaires
+dev	Intègre TodoList, useTodos et le champ d'ajout dans src/main.tsx pour rendre l'app fonctionnelle
+archi	Quelle architecture recommandes-tu pour synchroniser plus tard les todos avec un backend (offline-first, gestion des conflits) ? Documente la conception retenue dans docs/architecture.md sans l'implémenter
+archi	Analyse la sécurité de la persistance localStorage des todos (XSS, données sensibles) et documente les trade-offs et mitigations dans docs/security.md
