@@ -40,19 +40,22 @@ Pour `front-back` ou `single` :
 8. **Dossier cible** : par défaut `~/Desktop/<nom-du-projet>`.
 
 Pour `package` (librairie npm, agnostique de tout framework — **ne propose PAS**
-framework front, e2e/Cypress, Postman ni tests d'acceptation ; les questions
-doivent le refléter) :
+framework front ni e2e/Cypress ; les questions doivent le refléter) :
 
 3. **CI** : `GitHub Actions` / `GitLab CI` / `aucune` — jobs lint + tests
-   unitaires/intégration + build uniquement (pas de e2e/système).
+   unitaires/intégration + build (pas de e2e ; system seulement si Postman ci-dessous).
 4. **Setup des tests dès le départ ?** oui (recommandé) → configs **Jest** +
-   **Stryker** (unitaire/intégration) seulement / non (`--no-tests-setup`).
-5. **Storybook** : oui (recommandé si librairie de composants UI) / non
+   **Stryker** (unitaire/intégration) / non (`--no-tests-setup`).
+5. **La librairie expose-t-elle une API ?** oui → tests système **Postman**
+   (`--postman` : tests/systeme + collection + job CI system) / non.
+6. **Tests non-fonctionnels / d'acceptation ?** (`--acceptance`) : ajoute
+   `tests/acceptance/` + `uat/{disponibilite,securite,performance,robustesse}` —
+   à proposer si la lib a des exigences de perf/sécu/robustesse.
+7. **Storybook** : oui (recommandé si librairie de composants UI) / non
    (recommandé pour une lib purement logique).
-6. **Dossier cible** : par défaut `~/Desktop/<nom-du-projet>`.
+8. **Dossier cible** : par défaut `~/Desktop/<nom-du-projet>`.
 
-Pour un `package`, ne passe pas `--framework` (ignoré, la lib est agnostique)
-ni `--acceptance`.
+Pour un `package`, ne passe pas `--framework` (ignoré, la lib est agnostique).
 
 ## 2. Exécuter le générateur
 
@@ -60,7 +63,7 @@ ni `--acceptance`.
 ${CLAUDE_PLUGIN_ROOT}/scripts/bootstrap.sh \
   --name <nom> --desc "<description>" \
   --layout <front-back|single|package> [--framework <nextjs|vite>] \
-  --ci <github|gitlab|none> [--no-storybook] [--no-tests-setup] [--acceptance] \
+  --ci <github|gitlab|none> [--no-storybook] [--no-tests-setup] [--acceptance] [--postman] \
   --target <dossier>
 ```
 

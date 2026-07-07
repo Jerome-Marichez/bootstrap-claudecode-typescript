@@ -5,7 +5,12 @@
 #   ./scripts/bootstrap.sh --name mon-projet --target ~/Desktop/mon-projet \
 #       [--desc "Description"] [--owner "Jérôme"] \
 #       [--layout front-back|single|package] [--framework nextjs|vite] \
-#       [--ci github|gitlab|none] [--no-storybook] [--no-tests-setup] [--acceptance] [--no-git]
+#       [--ci github|gitlab|none] [--no-storybook] [--no-tests-setup] [--acceptance] \
+#       [--postman] [--no-git]
+#
+#   --postman : pour --layout package, ajoute quand même les tests système API
+#   (tests/systeme + collection Postman + job CI system) — utile si la librairie
+#   expose une API. Sans effet sur front-back/single (Postman déjà inclus).
 #
 #   --no-tests-setup : ne pose pas l'outillage de tests (Jest + Stryker pour
 #   unitaire/intégration, Cypress pour e2e, Postman pour le système API) —
@@ -30,6 +35,7 @@ TARGET=""
 STORYBOOK=1
 TESTS_SETUP=1
 ACCEPTANCE=0
+POSTMAN=0   # package uniquement : force les tests système API (Postman)
 DO_GIT=1
 
 while [ $# -gt 0 ]; do
@@ -44,6 +50,7 @@ while [ $# -gt 0 ]; do
     --no-storybook) STORYBOOK=0; shift ;;
     --no-tests-setup) TESTS_SETUP=0; shift ;;
     --acceptance) ACCEPTANCE=1; shift ;;
+    --postman) POSTMAN=1; shift ;;
     --no-git) DO_GIT=0; shift ;;
     -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Option inconnue : $1" >&2; exit 1 ;;
@@ -182,6 +189,10 @@ elif [ "$LAYOUT" = "package" ]; then
   for d in tests/unitaire tests/integration; do
     touch "$TARGET/$d/.gitkeep"
   done
+  if [ "$POSTMAN" = 1 ]; then
+    mkdir -p "$TARGET/tests/systeme"
+    touch "$TARGET/tests/systeme/.gitkeep"
+  fi
 else
   mkdir -p "$TARGET/src" "$TARGET/tests/unitaire" "$TARGET/tests/integration" \
            "$TARGET/tests/e2e" "$TARGET/tests/systeme"
@@ -206,10 +217,10 @@ if [ "$TESTS_SETUP" = 1 ]; then
     render "$TPL/tests-setup/stryker.config.json" "$TARGET/stryker.config.json"
     render "$TPL/tests-setup/cypress.config.ts"   "$TARGET/cypress.config.ts"
   fi
-  # Postman — validation rejouable de l'API (pas pertinent pour un package)
+  # Postman — validation rejouable de l'API (package : seulement si --postman)
   if [ "$LAYOUT" = "front-back" ]; then
     render "$TPL/tests-setup/postman_collection.json" "$TARGET/back/tests/systeme/postman_collection.json"
-  elif [ "$LAYOUT" = "single" ]; then
+  elif [ "$LAYOUT" = "single" ] || { [ "$LAYOUT" = "package" ] && [ "$POSTMAN" = 1 ]; }; then
     render "$TPL/tests-setup/postman_collection.json" "$TARGET/tests/systeme/postman_collection.json"
   fi
 fi
@@ -230,9 +241,12 @@ case "$CI" in
     render "$TPL/issue-template.md" "$TARGET/.github/ISSUE_TEMPLATE/issue.md"
     for f in "$TPL"/workflows/github/*.yml; do
       base="$(basename "$f")"
-      # Les jobs e2e/system n'ont pas de sens pour un package.
+      # Package : pas de e2e ; system seulement si --postman (lib exposant une API).
       if [ "$LAYOUT" = "package" ]; then
-        case "$base" in ci-main-system.yml|ci-main-e2e.yml) continue ;; esac
+        case "$base" in
+          ci-main-e2e.yml) continue ;;
+          ci-main-system.yml) [ "$POSTMAN" = 1 ] || continue ;;
+        esac
       fi
       render "$f" "$TARGET/.github/workflows/$base"
     done
@@ -245,8 +259,9 @@ case "$CI" in
       && mv "$TARGET/.gitlab/issue_templates/issue.md.tmp" "$TARGET/.gitlab/issue_templates/issue.md"
     render "$TPL/workflows/gitlab/gitlab-ci.yml" "$TARGET/.gitlab-ci.yml"
     if [ "$LAYOUT" = "package" ]; then
-      # Même filtrage que côté GitHub : pas de jobs e2e/system pour un package.
-      awk '/^[a-zA-Z0-9_-]+:/{skip=($0=="e2e:"||$0=="system:")} !skip' \
+      # Même filtrage que côté GitHub : pas de e2e ; system conservé si --postman.
+      awk -v keep_system="$POSTMAN" \
+        '/^[a-zA-Z0-9_-]+:/{skip=($0=="e2e:"||($0=="system:"&&keep_system!=1))} !skip' \
         "$TARGET/.gitlab-ci.yml" > "$TARGET/.gitlab-ci.yml.tmp" && mv "$TARGET/.gitlab-ci.yml.tmp" "$TARGET/.gitlab-ci.yml"
     fi
     ;;
