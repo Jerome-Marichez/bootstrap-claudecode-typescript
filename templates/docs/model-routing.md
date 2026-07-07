@@ -17,7 +17,7 @@ heuristique instantanée + subagents pré-définis + escalade.
 | Subagent | Modèle | Effort | Tâches |
 |----------|--------|--------|--------|
 | `opus-architect` | opus | xhigh | architecture, conception, migrations, sécurité, auth, paiement, concurrence, debugging profond, questions ouvertes (« pourquoi », « comment devrait-on ») |
-| `sonnet-dev` | sonnet | high | features, refactoring ciblé, bugfix non trivial, tests — **et toute la zone grise** |
+| `opus-dev` | opus | medium | features, refactoring ciblé, bugfix non trivial, tests — **et toute la zone grise** |
 | `haiku-mechanic` | haiku | — | doc, renommages, formatage, commits, recherches de fichiers |
 
 3. Le modèle principal **peut outrepasser** la recommandation (il voit tout le
@@ -27,18 +27,20 @@ heuristique instantanée + subagents pré-définis + escalade.
 ## Garde-fous anti-perte de précision
 
 - **Défaut = vers le haut.** On ne route *vers le bas* que sur signal positif net
-  (tâche mécanique, courte, sans signal métier). La zone grise va à `sonnet-dev`,
+  (tâche mécanique, courte, sans signal métier). La zone grise va à `opus-dev`,
   jamais à `haiku-mechanic`. (Asymétrie clé de la littérature routing : biaiser le
   seuil vers le modèle fort coûte peu en tokens, l'inverse coûte cher en qualité.)
-- **Escalade (cascade).** Les prompts de `sonnet-dev` et `haiku-mechanic` imposent
+- **Escalade (cascade).** Les prompts de `opus-dev` et `haiku-mechanic` imposent
   de répondre `ESCALATE: <raison>` si la tâche les dépasse ; le modèle principal
   re-délègue alors un niveau au-dessus. Une décision de routage n'est donc jamais
   définitive.
 - **Signaux de risque prioritaires.** sécurité, auth, paiement, migration,
   concurrence → toujours `opus-architect`, quelle que soit la taille du prompt.
-- **Pas d'Opus bridé.** Quand on route vers Opus, l'effort reste `xhigh`
-  (recommandation officielle pour le code) : les économies viennent du choix du
-  modèle sur les tâches simples, pas d'un modèle fort au rabais.
+- **L'effort porte l'économie, pas la qualité du modèle.** Les deux paliers hauts
+  restent sur Opus — seule la profondeur de raisonnement varie (`xhigh` pour
+  l'architecture, recommandation officielle pour le code ; `medium` pour le
+  développement courant). Les économies viennent de l'effort réduit et de Haiku
+  sur le mécanique, jamais d'un modèle plus faible sur une tâche de fond.
 - **Override utilisateur.** Préfixer le prompt par `!!` désactive le routage pour
   ce prompt. Le hook ne bloque jamais rien.
 - **Fail-open.** Toute erreur du hook (jq absent, ccusage KO) → aucune injection,
@@ -50,8 +52,8 @@ Si `CREDITS_LIMIT_TOKENS` (plafond de tokens du bloc de facturation 5 h) est dé
 dans l'environnement, le hook lit la consommation via `ccusage` — **mise en cache
 10 minutes** (aucun appel réseau à chaque prompt) :
 
-- **> 50 % consommés et reset < 2 h** → recommandation plafonnée à `sonnet-dev`
-  (pas d'Opus) jusqu'au reset ;
+- **> 50 % consommés et reset < 2 h** → recommandation plafonnée à `opus-dev`
+  (effort medium, pas de xhigh) jusqu'au reset ;
 - **< 50 % consommés et reset < 1 h** → message : marge disponible, modèle fort
   utilisable sans compter.
 

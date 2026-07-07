@@ -116,7 +116,7 @@ routes_to() { route "$1" | jq -r '.hookSpecificOutput.additionalContext' | grep 
 no_output() { test -z "$(route "$1")"; }
 check "architecture → opus-architect"    routes_to "repense l architecture du module de paiement" "opus-architect"
 check "sécurité → opus-architect"        routes_to "ajoute la gestion des tokens auth" "opus-architect"
-check "feature → sonnet-dev"             routes_to "implémente le tri de la liste des produits par prix" "sonnet-dev"
+check "feature → opus-dev"             routes_to "implémente le tri de la liste des produits par prix" "opus-dev"
 check "mécanique → haiku-mechanic"       routes_to "corrige la typo dans le readme" "haiku-mechanic"
 check "override !! → silence"            no_output "!!repense toute l architecture"
 check "commande slash → silence"         no_output "/merge-prod"

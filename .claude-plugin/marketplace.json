@@ -7,7 +7,7 @@
     {
       "name": "bootstrap-claudecode-typescript",
       "source": "./",
-      "description": "Bootstrap de projet TypeScript/React immédiatement fonctionnel : docs, CLAUDE.md, hooks + routage de modèles (subagents opus/sonnet/haiku), skills, package.json/tsconfig câblés, Docker, tests avec exemple qui passe, lint 300 lignes, CI GitHub/GitLab réelle."
+      "description": "Bootstrap de projet TypeScript/React immédiatement fonctionnel : docs, CLAUDE.md, hooks + routage de modèles (subagents opus/haiku), skills, package.json/tsconfig câblés, Docker, tests avec exemple qui passe, lint 300 lignes, CI GitHub/GitLab réelle."
     }
   ]
 }

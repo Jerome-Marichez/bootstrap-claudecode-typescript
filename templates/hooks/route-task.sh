@@ -2,10 +2,10 @@
 # Hook UserPromptSubmit — routage de modèles ({{PROJECT_NAME}})
 # Classifie la demande (architecture / développement / mécanique) par heuristique
 # FR/EN et RECOMMANDE le subagent adapté (.claude/agents/ : opus-architect,
-# sonnet-dev, haiku-mechanic). Conception et garde-fous : docs/model-routing.md.
+# opus-dev, haiku-mechanic). Conception et garde-fous : docs/model-routing.md.
 #
 # Garde-fous anti-perte de précision :
-#   - défaut = vers le haut : zone grise → sonnet-dev, jamais haiku ;
+#   - défaut = vers le haut : zone grise → opus-dev, jamais haiku ;
 #   - recommandation, pas contrainte : le modèle principal (qui voit tout le
 #     contexte) peut outrepasser — dans le doute, un cran AU-DESSUS ;
 #   - escalade : un subagent qui répond « ESCALATE: <raison> » est re-délégué
@@ -16,7 +16,7 @@
 # Budget crédits (fusion de l'ancien guard-model-usage) : si CREDITS_LIMIT_TOKENS
 # est défini, l'usage du bloc de facturation est lu via ccusage avec un CACHE de
 # 10 min (aucun appel réseau à chaque prompt) ; budget bas → recommandation
-# plafonnée à sonnet-dev. Journal JSONL : .claude/route-task.log.
+# plafonnée à opus-dev. Journal JSONL : .claude/route-task.log.
 
 set -u
 command -v jq >/dev/null 2>&1 || exit 0
@@ -38,7 +38,7 @@ MID_RE='impl[ée]ment|ajoute|\badd\b|cr[ée]e|corrige|\bfix\b|r[ée]pare|\bbug\b
 
 # Priorité : signaux UP (risque/architecture), puis longueur, puis signaux
 # mécaniques nets sur prompt court (avant MID : « corrige la typo » contient un
-# verbe MID mais reste mécanique), puis développement, puis zone grise → sonnet.
+# verbe MID mais reste mécanique), puis développement, puis zone grise → opus-dev.
 if printf '%s' "$prompt" | grep -Eiq "$UP_RE"; then
   class="architecture" agent="opus-architect"
 elif [ "$words" -gt 150 ]; then
@@ -46,11 +46,11 @@ elif [ "$words" -gt 150 ]; then
 elif printf '%s' "$prompt" | grep -Eiq "$DOWN_RE" && [ "$words" -lt 25 ]; then
   class="mécanique" agent="haiku-mechanic"
 elif printf '%s' "$prompt" | grep -Eiq "$MID_RE"; then
-  class="développement" agent="sonnet-dev"
+  class="développement" agent="opus-dev"
 elif [ "$words" -lt 8 ]; then
   exit 0  # court et sans signal : conversationnel, ne pas polluer le contexte
 else
-  class="zone grise (défaut vers le haut)" agent="sonnet-dev"
+  class="zone grise (défaut vers le haut)" agent="opus-dev"
 fi
 
 # --- Budget crédits (cache ccusage 10 min) --------------------------------------
@@ -74,8 +74,8 @@ if [ -n "${CREDITS_LIMIT_TOKENS:-}" ] && command -v npx >/dev/null 2>&1; then
       hours_left=$(( (end_epoch - $(date -u +%s)) / 3600 ))
       pct=$(( tokens * 100 / CREDITS_LIMIT_TOKENS ))
       if [ "$pct" -gt "${USAGE_THRESHOLD_PCT:-50}" ] && [ "$hours_left" -lt "${MIN_HOURS_LEFT:-2}" ]; then
-        if [ "$agent" = "opus-architect" ]; then agent="sonnet-dev"; fi
-        budget_note=" BUDGET CRÉDITS : ${pct}% du bloc consommés, reset dans < ${hours_left}h — recommandation plafonnée à sonnet-dev (pas d'Opus ni d'effort max) jusqu'au reset ; privilégie des réponses économes."
+        if [ "$agent" = "opus-architect" ]; then agent="opus-dev"; fi
+        budget_note=" BUDGET CRÉDITS : ${pct}% du bloc consommés, reset dans < ${hours_left}h — recommandation plafonnée à opus-dev (effort medium, pas de xhigh) jusqu'au reset ; privilégie des réponses économes."
       elif [ "$pct" -lt "${USAGE_THRESHOLD_PCT:-50}" ] && [ "$hours_left" -lt "${BOOST_HOURS_LEFT:-1}" ]; then
         boost_msg="🟣 Crédits : ${pct}% consommés et reset dans < ${BOOST_HOURS_LEFT:-1}h — marge disponible, modèle fort utilisable sans compter."
       fi
@@ -91,7 +91,7 @@ if [ -d "$(dirname "$log")" ]; then
 fi
 
 # --- Injection -------------------------------------------------------------------
-ctx="ROUTAGE MODÈLE — demande classée « ${class} ». Recommandation : délègue l'exécution au subagent « ${agent} » (défini dans .claude/agents/, modèle et effort adaptés). Heuristique basée sur le prompt seul : si le contexte de la session indique une complexité différente, choisis le subagent adapté — dans le doute, un cran AU-DESSUS, jamais en dessous. Si le subagent termine par « ESCALATE: <raison> », re-délègue la tâche un niveau au-dessus (haiku-mechanic → sonnet-dev → opus-architect) avec la raison. L'utilisateur peut bypasser ce routage en préfixant son prompt par « !! ».${budget_note}"
+ctx="ROUTAGE MODÈLE — demande classée « ${class} ». Recommandation : délègue l'exécution au subagent « ${agent} » (défini dans .claude/agents/, modèle et effort adaptés). Heuristique basée sur le prompt seul : si le contexte de la session indique une complexité différente, choisis le subagent adapté — dans le doute, un cran AU-DESSUS, jamais en dessous. Si le subagent termine par « ESCALATE: <raison> », re-délègue la tâche un niveau au-dessus (haiku-mechanic → opus-dev → opus-architect) avec la raison. L'utilisateur peut bypasser ce routage en préfixant son prompt par « !! ».${budget_note}"
 
 if [ -n "$boost_msg" ]; then
   jq -n --arg ctx "$ctx" --arg msg "$boost_msg" \

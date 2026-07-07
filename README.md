@@ -66,7 +66,7 @@ connecté à la CLI GitHub (`gh api user`), à défaut `git config user.name` ;
 | `package.json` + `tsconfig.json` | **Câblés et fonctionnels** par layout/framework : Next.js ou Vite + React, Zod, Jest + ts-jest, Biome, Stryker, Cypress ; back node:http minimal (front-back) ; tsup + exports ESM/CJS (package) |
 | Docker | `Dockerfile` multi-stage (`node:24-alpine`) par app + `docker-compose.yml` + `.env.example` — sauf layout package |
 | `.claude/hooks/` | `route-task.sh` (routage de modèles + budget crédits), `check-test-location.sh`, `check-file-length.sh` (300 lignes), `check-new-dependency.sh`, `remind-docs.sh`, `remind-tests.sh` |
-| `.claude/agents/` | `opus-architect` (opus, xhigh), `sonnet-dev` (sonnet, high), `haiku-mechanic` (haiku) — cibles du routage de modèles |
+| `.claude/agents/` | `opus-architect` (opus, xhigh), `opus-dev` (opus, medium), `haiku-mechanic` (haiku) — cibles du routage de modèles |
 | `.claude/settings.json` | Câblage des hooks UserPromptSubmit / PreToolUse / PostToolUse |
 | `.claude/skills/` | `/create-issue` (template d'issue commun obligatoire, sans emoji), `/create-feat` (issue → branche dev → worktree → subagent → PR), `/merge-prod` (PR dev→main, CI vérifiée, merge humain), exemple |
 | Structure `src/` | `interfaces/` (entités `IXxx` + `types.ts`), `schemas/` (validation **Zod**), `services/` (métier), `utils/`, `components/`, `views/`, `hooks/` |
@@ -118,7 +118,7 @@ davantage en exploration et produirait un résultat encore moins conforme.
 
 | Hook | Événement | Rôle |
 |------|-----------|------|
-| `route-task.sh` | UserPromptSubmit | **Routage de modèles** : classifie la demande (architecture / développement / mécanique) et recommande le subagent adapté — voir section suivante. Absorbe aussi le **budget crédits** : usage lu via `ccusage` avec **cache 10 min** (`CREDITS_LIMIT_TOKENS` requis) ; > 50 % consommés et reset < 2 h → recommandation plafonnée à sonnet ; < 50 % et reset < 1 h → message « marge disponible ». |
+| `route-task.sh` | UserPromptSubmit | **Routage de modèles** : classifie la demande (architecture / développement / mécanique) et recommande le subagent adapté — voir section suivante. Absorbe aussi le **budget crédits** : usage lu via `ccusage` avec **cache 10 min** (`CREDITS_LIMIT_TOKENS` requis) ; > 50 % consommés et reset < 2 h → recommandation plafonnée à opus-dev (effort medium) ; < 50 % et reset < 1 h → message « marge disponible ». |
 | `check-test-location.sh` | PreToolUse (Write) | Bloque la création d'un fichier de test (`*.spec.*`, `*.test.*`, `*.cy.ts` — ts/tsx/js/jsx) hors de la convention `docs/testing.md`. |
 | `check-new-dependency.sh` | PreToolUse (Bash/Write/Edit/MultiEdit) | Nouvelle dépendance acceptée si **≥ 3 contributeurs ET publication < 6 mois**, OU **éditeur de confiance** (Meta, Google, Vercel, zod, jest… extensible via `TRUSTED_ORGS_EXTRA`) avec **≥ 1000 étoiles** ; version **SemVer** obligatoire (refus si non conforme ou indisponible). Publication > 6 mois hors éditeur de confiance → **confirmation manuelle** (paquet mature vs abandonné), plus de refus sec. |
 | `check-file-length.sh` | PostToolUse (Write/Edit) | Alerte dès qu'un fichier source dépasse 300 lignes. |
@@ -135,10 +135,10 @@ Chaque projet généré embarque un routage **sans perte de précision** (doc co
 | Subagent | Modèle / effort | Tâches |
 |----------|-----------------|--------|
 | `opus-architect` | opus / xhigh | architecture, conception, migrations, sécurité, auth, paiement, concurrence, debugging profond |
-| `sonnet-dev` | sonnet / high | features, refactoring, bugfix non trivial, tests — **et toute la zone grise** |
+| `opus-dev` | opus / medium | features, refactoring, bugfix non trivial, tests — **et toute la zone grise** |
 | `haiku-mechanic` | haiku | doc, renommages, formatage, commits, recherches |
 
-Garde-fous : **défaut vers le haut** (zone grise → sonnet, jamais haiku) ; **escalade**
+Garde-fous : **défaut vers le haut** (zone grise → opus-dev (medium), jamais haiku) ; **escalade**
 (`ESCALATE: <raison>` → re-délégation un cran au-dessus) ; recommandation
 **outrepassable** par le modèle principal ; override utilisateur par préfixe `!!` ;
 **fail-open** (toute erreur → aucune injection) ; journal JSONL `.claude/route-task.log`

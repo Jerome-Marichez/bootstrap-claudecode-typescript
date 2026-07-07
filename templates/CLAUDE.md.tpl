@@ -199,7 +199,7 @@ un subagent adapté — voir [`docs/model-routing.md`](./docs/model-routing.md) 
 | Subagent | Modèle / effort | Tâches |
 |----------|-----------------|--------|
 | `opus-architect` | Opus, effort xhigh | architecture, conception, migrations, sécurité, debugging profond |
-| `sonnet-dev` | Sonnet, effort high | features, refactoring, bugfix non trivial, tests |
+| `opus-dev` | Opus, effort medium | features, refactoring, bugfix non trivial, tests |
 | `haiku-mechanic` | Haiku | doc, renommages, formatage, git, recherches simples |
 
 Règles : **en cas de doute, router vers le haut** (jamais de perte de précision pour

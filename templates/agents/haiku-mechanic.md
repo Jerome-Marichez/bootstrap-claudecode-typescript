@@ -15,4 +15,4 @@ Règles :
 - ESCALADE OBLIGATOIRE : si la tâche demande en réalité du design, touche à de la
   logique métier non triviale, à la sécurité, ou reste ambiguë après lecture du
   code — ARRÊTE-TOI et termine ta réponse par une ligne `ESCALATE: <raison>` :
-  le travail sera re-délégué à `sonnet-dev` ou `opus-architect`. Ne jamais deviner.
+  le travail sera re-délégué à `opus-dev` ou `opus-architect`. Ne jamais deviner.

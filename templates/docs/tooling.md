@@ -31,7 +31,7 @@ make lint
 ## Subagents Claude Code (`.claude/agents/`)
 
 Trois subagents pré-définis portent le routage de modèles (`opus-architect`,
-`sonnet-dev`, `haiku-mechanic`) — critères, garde-fous et sources dans
+`opus-dev`, `haiku-mechanic`) — critères, garde-fous et sources dans
 [`model-routing.md`](./model-routing.md).
 
 ## Skills Claude Code (`.claude/skills/`)
