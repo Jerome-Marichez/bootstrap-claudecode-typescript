@@ -13,7 +13,7 @@
         ]
       },
       {
-        "matcher": "Bash|Write|Edit",
+        "matcher": "Bash|Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
@@ -28,8 +28,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-model-usage.sh\"",
-            "statusMessage": "Vérif budget crédits"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/route-task.sh\"",
+            "statusMessage": "Routage modèle"
           }
         ]
       }

@@ -21,12 +21,18 @@ make lint
 
 | Hook | Événement | Rôle |
 |------|-----------|------|
+| `route-task.sh` | UserPromptSubmit | Classifie la demande (architecture / feature / mécanique) et recommande le subagent adapté (voir [`model-routing.md`](./model-routing.md)) ; plafonne les recommandations si le budget crédits est bas (`CREDITS_LIMIT_TOKENS`). |
 | `check-test-location.sh` | PreToolUse (Write) | Bloque la création d'un fichier de test hors de la convention (`docs/testing.md`). |
-| `check-new-dependency.sh` | PreToolUse (Bash/Write/Edit) | Nouvelle dépendance : ≥ 3 contributeurs ET publication < 6 mois, OU éditeur de confiance (Meta, Google, Amazon, Microsoft, Vercel…) avec ≥ 1000 étoiles. |
+| `check-new-dependency.sh` | PreToolUse (Bash/Write/Edit/MultiEdit) | Nouvelle dépendance : ≥ 3 contributeurs, OU éditeur de confiance (Meta, Google, Amazon, Microsoft, Vercel… extensible via `TRUSTED_ORGS_EXTRA`) avec ≥ 1000 étoiles ; SemVer obligatoire ; publication > 6 mois → confirmation manuelle. |
 | `check-file-length.sh` | PostToolUse (Write/Edit) | Avertit dès qu'un fichier source dépasse 300 lignes. |
-| `remind-docs.sh` | PostToolUse (Write/Edit) | Rappelle de mettre à jour README/docs après une modification de code. |
-| `remind-tests.sh` | PostToolUse (Write/Edit) | Rappelle la politique de tests (unitaire systématique, intégration/e2e sur demande). |
-| `guard-model-usage.sh` | UserPromptSubmit | Budget crédits : > 50 % consommés et reset < 2 h → interdit Fable 5/Opus max effort ; < 50 % et reset < 1 h → message violet « Fable 5 utilisable à fond ». Nécessite `CREDITS_LIMIT_TOKENS` (tokens du bloc 5 h) dans l'environnement. |
+| `remind-docs.sh` | PostToolUse (Write/Edit) | Rappelle de mettre à jour README/docs après une modification de code (au plus une fois par quart d'heure). |
+| `remind-tests.sh` | PostToolUse (Write/Edit) | Rappelle la politique de tests (unitaire systématique, intégration/e2e sur demande) — même throttle. |
+
+## Subagents Claude Code (`.claude/agents/`)
+
+Trois subagents pré-définis portent le routage de modèles (`opus-architect`,
+`sonnet-dev`, `haiku-mechanic`) — critères, garde-fous et sources dans
+[`model-routing.md`](./model-routing.md).
 
 ## Skills Claude Code (`.claude/skills/`)
 

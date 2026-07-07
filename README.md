@@ -1,10 +1,16 @@
 # bootstrap-claudecode-typescript
 
 **Plugin Claude Code** d'initialisation rapide de projets **TypeScript / React**
-(Next.js ou Vite) avec une structure standardisée : documentation (`README.md` +
-`docs/`), `CLAUDE.md`, hooks et skills Claude Code, structure de tests, validation
-des entrées **Zod**, lint (Biome + règle **max 300 lignes / fichier**) et workflows
-CI (GitHub Actions ou GitLab CI).
+(Next.js ou Vite) **immédiatement fonctionnels** : documentation (`README.md` +
+`docs/`), `CLAUDE.md`, hooks, subagents (routage de modèles) et skills Claude Code,
+`package.json`/`tsconfig` câblés (Jest, Zod, Biome), Docker (multi-stage + compose),
+structure de tests avec un test d'exemple qui passe, lint (Biome + règle **max 300
+lignes / fichier**) et workflows CI (GitHub Actions ou GitLab CI) qui exécutent de
+vraies commandes — `make install && make lint && make test && make build` passent
+dès la génération.
+
+**Prérequis du générateur** : bash, `jq`, `make` ; `gh` (auteur auto) et `curl`
+pour le hook dépendances ; Node ≥ 24 pour travailler dans le projet généré.
 
 > ⚠️ Plugin avant tout **personnel** : il encode *mes* conventions et habitudes de
 > travail pour m'aider à bootstrapper mes projets rapidement. Utilisable par
@@ -54,19 +60,22 @@ connecté à la CLI GitHub (`gh api user`), à défaut `git config user.name` ;
 
 | Élément | Contenu |
 |---------|---------|
-| `README.md` | Squelette standard : présentation, démarrage rapide (Make/Docker), liens docs |
-| `CLAUDE.md` | Règles projet : workflow Git 2 branches, micro-features (`/create-feat`), mise en prod (`/merge-prod`), politique de tests, politique doc, intégrité CI, limite 300 lignes |
-| `docs/` | 13 docs standards : architecture, testing, ci-cd, git-workflow, docker, tooling, security, accessibility, design, storybook, data-model, rgpd, ameliorations |
-| `.claude/hooks/` | `check-test-location.sh`, `check-file-length.sh` (300 lignes), `check-new-dependency.sh`, `guard-model-usage.sh` (budget crédits), `remind-docs.sh`, `remind-tests.sh` |
-| `.claude/settings.json` | Câblage des hooks PreToolUse / PostToolUse |
+| `README.md` | Squelette standard : présentation, démarrage rapide (Make/Docker), liens docs — adapté au layout |
+| `CLAUDE.md` | Règles projet : workflow Git 2 branches, micro-features (`/create-feat`), mise en prod (`/merge-prod`), politique de tests, politique doc, routage de modèles, intégrité CI, limite 300 lignes — adapté au layout |
+| `docs/` | 14 docs standards : architecture, testing, ci-cd, git-workflow, docker, tooling, model-routing, security, accessibility, design, storybook, data-model, rgpd, ameliorations — adaptées au layout |
+| `package.json` + `tsconfig.json` | **Câblés et fonctionnels** par layout/framework : Next.js ou Vite + React, Zod, Jest + ts-jest, Biome, Stryker, Cypress ; back node:http minimal (front-back) ; tsup + exports ESM/CJS (package) |
+| Docker | `Dockerfile` multi-stage (`node:24-alpine`) par app + `docker-compose.yml` + `.env.example` — sauf layout package |
+| `.claude/hooks/` | `route-task.sh` (routage de modèles + budget crédits), `check-test-location.sh`, `check-file-length.sh` (300 lignes), `check-new-dependency.sh`, `remind-docs.sh`, `remind-tests.sh` |
+| `.claude/agents/` | `opus-architect` (opus, xhigh), `sonnet-dev` (sonnet, high), `haiku-mechanic` (haiku) — cibles du routage de modèles |
+| `.claude/settings.json` | Câblage des hooks UserPromptSubmit / PreToolUse / PostToolUse |
 | `.claude/skills/` | `/create-issue` (template d'issue commun obligatoire, sans emoji), `/create-feat` (issue → branche dev → worktree → subagent → PR), `/merge-prod` (PR dev→main, CI vérifiée, merge humain), exemple |
 | Structure `src/` | `interfaces/` (entités `IXxx` + `types.ts`), `schemas/` (validation **Zod**), `services/` (métier), `utils/`, `components/`, `views/`, `hooks/` |
 | `shared/` (front-back) | Interfaces d'entités et schémas Zod **partagés entre front et back** (`shared/interfaces/`, `shared/schemas/`) — jamais de duplication |
-| Tests | `front/tests/{unitaire,integration,e2e}` + `back/tests/{unitaire,integration,systeme}` (front-back), `tests/{unitaire,integration,e2e,systeme}` (single) ou `tests/{unitaire,integration}` (package) — avec configs **Jest**, **Stryker** (mutation), **Cypress** (e2e) et collection **Postman** (système API), et en option `tests/acceptance/` + UAT (disponibilité, sécurité, performance, robustesse) |
+| Tests | `front/tests/{unitaire,integration,e2e}` + `back/tests/{unitaire,integration,systeme}` (front-back), `tests/{unitaire,integration,e2e,systeme}` (single) ou `tests/{unitaire,integration}` (package) — avec configs **Jest**, **Stryker** (mutation), **Cypress** (e2e), collection **Postman** (système API), un **test unitaire d'exemple qui passe** (chaîne Jest+ts-jest validée dès le bootstrap), et en option `tests/acceptance/` + UAT (disponibilité, sécurité, performance, robustesse) |
 | Lint | `biome.json` + `scripts/check-max-lines.sh` (300 lignes) + `make lint` |
-| CI | GitHub : `ci-dev-lint` (Biome + 300 lignes), `ci-dev-tests`, `ci-main-e2e`, `ci-main-system`, `ci-main-build` — ou GitLab : `.gitlab-ci.yml` équivalent |
-| `Makefile` | Interface unique : install, dev, lint, test-* (unit, int, e2e, system, mutation, acceptance), storybook, docker-* |
-| `.nvmrc` | Version Node unique (24 LTS) — lue par les workflows GitHub (`node-version-file`) ; l'image GitLab (`node:24`) se bumpe avec |
+| CI | GitHub : `ci-dev-lint` (Biome + 300 lignes), `ci-dev-tests`, `ci-main-e2e`, `ci-main-system`, `ci-main-build` — ou GitLab : `.gitlab-ci.yml` équivalent. Les jobs exécutent les **vraies** cibles Make (aucun `echo TODO` : une CI verte veut dire que install/tests/build sont réellement passés) |
+| `Makefile` | Interface unique aux **cibles réelles** : install, dev, build, lint, test-* (unit, int, e2e, system, mutation, acceptance), storybook, docker-* — adaptées au layout |
+| `.nvmrc` | Version Node unique — point de vérité `NODE_VERSION` dans `bootstrap.sh`, propagé aux workflows GitHub (`node-version-file`), à l'image GitLab et aux Dockerfiles |
 | Template d'issue | `.github/ISSUE_TEMPLATE/issue.md` ou `.gitlab/issue_templates/issue.md` — modèle **commun** (type bug/feature/documentation/autre, description, critères d'acceptation, impacts), imposé par le skill `/create-issue`, sans emoji |
 | Git | `git init` + commit de bootstrap + branches `main` et `dev` |
 
@@ -109,12 +118,33 @@ davantage en exploration et produirait un résultat encore moins conforme.
 
 | Hook | Événement | Rôle |
 |------|-----------|------|
-| `check-test-location.sh` | PreToolUse (Write) | Bloque la création d'un fichier de test hors de `docs/testing.md`. |
-| `check-new-dependency.sh` | PreToolUse (Bash/Write/Edit) | Nouvelle dépendance acceptée si **≥ 3 contributeurs ET publication < 6 mois**, OU **éditeur de confiance** (Meta, Google, Amazon, Microsoft, Vercel…) avec **≥ 1000 étoiles** — et dans tous les cas la version doit respecter **SemVer** (refus si non conforme **ou si l'information est indisponible**). |
+| `route-task.sh` | UserPromptSubmit | **Routage de modèles** : classifie la demande (architecture / développement / mécanique) et recommande le subagent adapté — voir section suivante. Absorbe aussi le **budget crédits** : usage lu via `ccusage` avec **cache 10 min** (`CREDITS_LIMIT_TOKENS` requis) ; > 50 % consommés et reset < 2 h → recommandation plafonnée à sonnet ; < 50 % et reset < 1 h → message « marge disponible ». |
+| `check-test-location.sh` | PreToolUse (Write) | Bloque la création d'un fichier de test (`*.spec.*`, `*.test.*`, `*.cy.ts` — ts/tsx/js/jsx) hors de la convention `docs/testing.md`. |
+| `check-new-dependency.sh` | PreToolUse (Bash/Write/Edit/MultiEdit) | Nouvelle dépendance acceptée si **≥ 3 contributeurs ET publication < 6 mois**, OU **éditeur de confiance** (Meta, Google, Vercel, zod, jest… extensible via `TRUSTED_ORGS_EXTRA`) avec **≥ 1000 étoiles** ; version **SemVer** obligatoire (refus si non conforme ou indisponible). Publication > 6 mois hors éditeur de confiance → **confirmation manuelle** (paquet mature vs abandonné), plus de refus sec. |
 | `check-file-length.sh` | PostToolUse (Write/Edit) | Alerte dès qu'un fichier source dépasse 300 lignes. |
-| `remind-docs.sh` | PostToolUse (Write/Edit) | Rappelle de mettre à jour README/docs après une modification de code. |
-| `remind-tests.sh` | PostToolUse (Write/Edit) | Rappelle la politique de tests (unitaire systématique ; intégration/e2e proposés). |
-| `guard-model-usage.sh` | UserPromptSubmit | **Budget crédits** : > 50 % consommés et reset < 2 h → interdit Fable 5 / Opus en max effort ; < 50 % et reset < 1 h → message **violet** « Fable 5 utilisable à fond ». Estimation via `ccusage` ; nécessite `CREDITS_LIMIT_TOKENS` dans l'environnement. |
+| `remind-docs.sh` | PostToolUse (Write/Edit) | Rappelle de mettre à jour README/docs après une modification de code — throttlé (1 rappel / 15 min). |
+| `remind-tests.sh` | PostToolUse (Write/Edit) | Rappelle la politique de tests (unitaire systématique ; intégration/e2e proposés) — même throttle. |
+
+## Routage de modèles (subagents)
+
+Chaque projet généré embarque un routage **sans perte de précision** (doc complète :
+`templates/docs/model-routing.md`) : le hook `route-task.sh` classifie chaque prompt
+(heuristique FR/EN instantanée, zéro appel réseau) et recommande un subagent de
+`.claude/agents/` — le modèle **et** l'effort sont portés par leur frontmatter :
+
+| Subagent | Modèle / effort | Tâches |
+|----------|-----------------|--------|
+| `opus-architect` | opus / xhigh | architecture, conception, migrations, sécurité, auth, paiement, concurrence, debugging profond |
+| `sonnet-dev` | sonnet / high | features, refactoring, bugfix non trivial, tests — **et toute la zone grise** |
+| `haiku-mechanic` | haiku | doc, renommages, formatage, commits, recherches |
+
+Garde-fous : **défaut vers le haut** (zone grise → sonnet, jamais haiku) ; **escalade**
+(`ESCALATE: <raison>` → re-délégation un cran au-dessus) ; recommandation
+**outrepassable** par le modèle principal ; override utilisateur par préfixe `!!` ;
+**fail-open** (toute erreur → aucune injection) ; journal JSONL `.claude/route-task.log`
+pour ne descendre un type de tâche que mesure à l'appui. Conception appuyée sur
+RouteLLM (seuil biaisé vers le modèle fort), les cascades LLM (routage + escalade)
+et le frontmatter natif `model`/`effort` des subagents Claude Code.
 
 ## Niveaux de tests (convention)
 
@@ -177,12 +207,24 @@ La mise en production passe par `/merge-prod` (merge humain uniquement).
 ## Personnaliser
 
 Les templates vivent dans `templates/`. Tokens substitués : `{{PROJECT_NAME}}`,
-`{{PROJECT_DESC}}`, `{{OWNER}}`, `{{FRAMEWORK}}`. Modifier un template ici met à
-jour tous les futurs projets.
+`{{PROJECT_DESC}}`, `{{OWNER}}`, `{{FRAMEWORK}}`, `{{NODE_VERSION}}`,
+`{{BIOME_VERSION}}` (points de vérité uniques en tête de `bootstrap.sh`).
+
+Les templates portent aussi des **blocs conditionnels** : une ligne contenant
+`>>only:tag1,tag2` ouvre un bloc conservé seulement si l'un des tags est actif
+(`front-back`/`single`/`package`, `nextjs`/`vite`, `docker`, `storybook`, `e2e`,
+`system`, `postman`, `acceptance`, `tests-setup`, `ci-github`/`ci-gitlab`) ; une
+ligne contenant `<<only` le ferme (pas d'imbrication). Modifier un template ici
+met à jour tous les futurs projets.
 
 ## Développement du plugin
 
-`./scripts/smoke-test.sh` génère les trois layouts dans un dossier temporaire et
-vérifie les invariants : structure, substitution des tokens, filtrage CI par
-layout, comportement des hooks. La CI du repo (`.github/workflows/ci.yml`)
-l'exécute à chaque push/PR.
+`./scripts/smoke-test.sh` génère quatre variantes (front-back Next.js, single Vite
+avec git, package GitLab sans Storybook, package `--postman`) dans un dossier
+temporaire et vérifie les invariants : structure, substitution des tokens et des
+blocs conditionnels, filtrage CI par layout, **aucune cible Make en TODO**, Docker,
+framework effectif, comportement de chaque hook (dont le routage de modèles :
+up/down/zone grise/override/fail-open et le throttle des rappels), git init, et —
+si le registre npm est joignable — la **résolution réelle des `package.json`**
+générés. La CI du repo (`.github/workflows/ci.yml`) l'exécute à chaque push/PR sur
+une matrice **ubuntu + macos** (les hooks ont des branches BSD `date -j`).

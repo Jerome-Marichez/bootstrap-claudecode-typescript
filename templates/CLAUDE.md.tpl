@@ -49,6 +49,7 @@ Le projet suit **toujours** un modèle à deux branches permanentes :
 Référence complète : [`docs/testing.md`](./docs/testing.md). Convention d'emplacement
 **imposée** (un hook bloque toute création hors convention) :
 
+<!-- >>only:front-back -->
 | Niveau | Côté | Emplacement | Nommage | Outil |
 |--------|------|-------------|---------|-------|
 | unitaire | front | `front/tests/unitaire/` | `*.spec.ts(x)` | Jest + React Testing Library |
@@ -57,7 +58,29 @@ Référence complète : [`docs/testing.md`](./docs/testing.md). Convention d'emp
 | unitaire | back | `back/tests/unitaire/` | `*.test.ts` | Jest |
 | intégration | back | `back/tests/integration/` | `*.test.ts` | Jest + Supertest + base de test dédiée |
 | système | back | `back/tests/systeme/` | `*.test.ts` | Jest + vrai serveur HTTP (`listen(0)`) + `fetch` ; collection **Postman** rejouable |
-| acceptation / UAT (si activé) | front + back | `tests/acceptance/` (+ `uat/{disponibilite,securite,performance,robustesse}/`) | `*.test.js|ts` | runner Node natif |
+<!-- <<only -->
+<!-- >>only:single -->
+| Niveau | Emplacement | Nommage | Outil |
+|--------|-------------|---------|-------|
+| unitaire | `tests/unitaire/` | `*.spec.ts(x)` | Jest + React Testing Library |
+| intégration | `tests/integration/` | `*.integration.spec.ts(x)` | Jest + RTL (vraie frontière HTTP pilotée par fixtures) |
+| e2e | `tests/e2e/` | `*.cy.ts` | Cypress |
+| système | `tests/systeme/` | `*.test.ts` | Jest + vrai serveur HTTP (`listen(0)`) + `fetch` ; collection **Postman** rejouable |
+<!-- <<only -->
+<!-- >>only:package -->
+| Niveau | Emplacement | Nommage | Outil |
+|--------|-------------|---------|-------|
+| unitaire | `tests/unitaire/` | `*.test.ts` | Jest |
+| intégration | `tests/integration/` | `*.test.ts` | Jest |
+<!-- <<only -->
+<!-- >>only:postman -->
+| système (API) | `tests/systeme/` | `*.test.ts` | Jest ; collection **Postman** rejouable |
+<!-- <<only -->
+<!-- >>only:acceptance -->
+
+**Acceptation / UAT** : `tests/acceptance/` (+ `uat/{disponibilite,securite,performance,robustesse}/`),
+nommage `*.test.js|ts`, runner Node natif (`make test-acceptance`).
+<!-- <<only -->
 
 La **qualité** des tests unitaires/intégration est mesurée par **Stryker**
 (mutation testing, `make test-mutation`) — ne jamais abaisser ses seuils.
@@ -98,27 +121,32 @@ indisponible) est **refusé**.
   **composants `.tsx`** (`ProductCard`) et les **classes du dossier métier
   `services/`** (`CartService`) ; **camelCase** pour tout le reste (fonctions,
   variables, hooks `useCart`, instances).
+<!-- >>only:front-back,single -->
 - **Séparation métier / rendu (front)** : le front a **toujours** un dossier
   `services/` qui porte la **logique métier** (classes/fonctions pures, appels API,
   règles de gestion) ; les **hooks React** (`use-*.ts`) ne gèrent que la **logique de
   rendu** (état d'UI, abonnements, orchestration des services pour les composants) —
   jamais de règle métier dans un hook ou un composant.
-- **`utils/`** : le front a aussi **toujours** un dossier `src/utils/` qui regroupe
+<!-- <<only -->
+- **`utils/`** : un dossier `src/utils/` regroupe **toujours**
   les **utilitaires** transverses (formatage, helpers purs, sans état ni métier).
 - **Interfaces et types** : toutes les **interfaces d'entités** vivent dans le dossier
   `src/interfaces/` (un fichier par entité) et leur nom **commence toujours par `I`**
   (`IProduct`, `IUser`…). Les **alias de types purs** (unions, utilitaires) vont dans
   `src/interfaces/types.ts` — uniquement des `type`, jamais d'interface.
-- **`shared/` (layout front-back)** : les interfaces d'entités et schémas Zod
+<!-- >>only:front-back -->
+- **`shared/`** : les interfaces d'entités et schémas Zod
   **partagés entre le front et le back** vivent dans `shared/` à la racine
   (`shared/interfaces/`, `shared/schemas/`) — **jamais de duplication** d'une même
   entité côté front et côté back.
+<!-- <<only -->
 - **Validation des entrées — Zod (obligatoire)** : toute entrée externe (body/query
   d'API, formulaire, webhook, variables d'environnement) est validée par un schéma
   **Zod** avant usage. Les schémas vivent dans `schemas/` (un fichier par entité,
   `product.schema.ts` ; dans `shared/schemas/` si partagé front-back) et les types
   d'entrée sont **dérivés du schéma** (`z.infer`), jamais l'inverse. Aucun cast
   direct (`as`) d'une donnée externe.
+<!-- >>only:front-back,single -->
 - **Composant = un dossier** : chaque composant React vit dans son dossier PascalCase
   avec un `index.tsx` et ses styles/assets **colocalisés**
   (`components/Button/index.tsx` + `button.module.css`). Les composants sont **purs**
@@ -131,6 +159,7 @@ indisponible) est **refusé**.
   métier sous `src/@<domaine>/` (ex. `@core` pour le socle applicatif, `@vitrine` pour
   le site public, `@shared` pour le transverse), chaque domaine portant ses propres
   `components/`, `hooks/`, `services/`, `utils/`, `interfaces/`.
+<!-- <<only -->
 
 ## Politique de documentation
 
@@ -139,9 +168,15 @@ indisponible) est **refusé**.
 - Une nouvelle catégorie `docs/` créée doit être **liée** dans le `README.md` **et** ce `CLAUDE.md`.
 - Docs disponibles : [architecture](./docs/architecture.md), [data-model](./docs/data-model.md),
   [testing](./docs/testing.md), [ci-cd](./docs/ci-cd.md), [git-workflow](./docs/git-workflow.md),
-  [docker](./docs/docker.md), [tooling](./docs/tooling.md), [security](./docs/security.md),
+  [tooling](./docs/tooling.md), [model-routing](./docs/model-routing.md),
+  [security](./docs/security.md),
   [accessibility](./docs/accessibility.md), [design](./docs/design.md),
+<!-- >>only:docker -->
+  [docker](./docs/docker.md),
+<!-- <<only -->
+<!-- >>only:storybook -->
   [storybook](./docs/storybook.md),
+<!-- <<only -->
   [rgpd](./docs/rgpd.md), [ameliorations](./docs/ameliorations.md).
 
 ## Skills projet (`.claude/skills/`)
@@ -156,6 +191,22 @@ Trois skills **obligatoires** encadrent le cycle de vie :
 
 Ajouter ici les procédures récurrentes du projet (build, déploiement, fixes connus).
 
+## Routage de modèles (subagents `.claude/agents/`)
+
+Le hook `route-task.sh` (UserPromptSubmit) classifie chaque demande et **recommande**
+un subagent adapté — voir [`docs/model-routing.md`](./docs/model-routing.md) :
+
+| Subagent | Modèle / effort | Tâches |
+|----------|-----------------|--------|
+| `opus-architect` | Opus, effort xhigh | architecture, conception, migrations, sécurité, debugging profond |
+| `sonnet-dev` | Sonnet, effort high | features, refactoring, bugfix non trivial, tests |
+| `haiku-mechanic` | Haiku | doc, renommages, formatage, git, recherches simples |
+
+Règles : **en cas de doute, router vers le haut** (jamais de perte de précision pour
+économiser) ; un subagent qui découvre que la tâche le dépasse répond `ESCALATE: <raison>`
+et le travail est re-délégué un cran au-dessus ; la recommandation du hook peut être
+outrepassée si le contexte de session l'exige.
+
 ## Commandes
 
 Interface unique : **Make** (voir `Makefile`).
@@ -165,5 +216,7 @@ make install        # dépendances
 make dev            # démarrage local
 make lint           # Biome + limite 300 lignes
 make test           # tous les niveaux de tests
+<!-- >>only:docker -->
 make docker-up      # stack conteneurisée
+<!-- <<only -->
 ```

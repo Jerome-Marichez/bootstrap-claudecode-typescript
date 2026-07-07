@@ -10,13 +10,17 @@
 # Dans TOUS les cas (A comme B), la dernière version publiée doit respecter la
 # convention SemVer — refus si non conforme OU si l'information est indisponible.
 # Sortie : rien = laisser passer ; sinon "deny" (critère non respecté) ou
-# "ask" (vérification impossible : réseau, rate limit…).
+# "ask" (vérification impossible : réseau, rate limit… — ou publication ancienne :
+# un paquet mature en maintenance n'est pas refusé d'office, l'humain tranche).
 
 set -u
 MIN_CONTRIBUTORS="${MIN_CONTRIBUTORS:-3}"
 MAX_AGE_MONTHS="${MAX_AGE_MONTHS:-6}"
 BIG_ORG_MIN_STARS="${BIG_ORG_MIN_STARS:-1000}"
-TRUSTED_ORGS="${TRUSTED_ORGS:-facebook meta-llama google googleapis angular aws awslabs amzn amazon-archives microsoft azure vercel}"
+# Orgs/mainteneurs de confiance — extensible sans écraser la liste via
+# TRUSTED_ORGS_EXTRA="org1 org2" dans l'environnement.
+TRUSTED_ORGS="${TRUSTED_ORGS:-facebook meta-llama google googleapis angular aws awslabs amzn amazon-archives microsoft azure vercel vitejs vuejs sveltejs nodejs openjs-foundation colinhacks jestjs testing-library cypress-io stryker-mutator biomejs egoist sindresorhus}"
+TRUSTED_ORGS="$TRUSTED_ORGS ${TRUSTED_ORGS_EXTRA:-}"
 
 input=$(cat)
 tool=$(printf '%s' "$input" | jq -r '.tool_name // empty')
@@ -120,9 +124,10 @@ for pkg in $pkgs; do
     done
   fi
 
-  # Condition A — fraîcheur + contributeurs
+  # Condition A — fraîcheur + contributeurs. Une publication ancienne peut être un
+  # simple paquet mature en maintenance : confirmation manuelle plutôt que refus sec.
   if [ "$recent" != 1 ]; then
-    deny "Dépendance $pkg : dernière publication le ${pubdate:-inconnue} (> $MAX_AGE_MONTHS mois) et pas un éditeur de confiance — installation refusée."
+    ask "Dépendance $pkg : dernière publication le ${pubdate:-inconnue} (> $MAX_AGE_MONTHS mois) et pas un éditeur de confiance. Paquet mature en maintenance ou paquet abandonné ? Confirmation manuelle requise."
   fi
   [ -z "$repo" ] && deny "Dépendance $pkg : aucun dépôt GitHub déclaré sur npm — impossible de vérifier les contributeurs, installation refusée."
 

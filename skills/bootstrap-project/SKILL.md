@@ -71,16 +71,20 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/bootstrap.sh \
 le générateur prend le compte connecté à la CLI GitHub (`gh api user`), à défaut
 `git config user.name`. `--owner` ne sert qu'à forcer explicitement autre chose.
 
-Le générateur crée : README.md, CLAUDE.md, docs/ (13 docs), .claude/ (hooks :
-emplacement des tests, 300 lignes, dépendances, budget crédits, rappels doc/tests ;
-settings.json ; skills `/create-issue`, `/create-feat`, `/merge-prod`), structure
-de tests + configs Jest/Stryker/Cypress/Postman, `src/interfaces/` (entités `IXxx`
-+ `types.ts`), `src/schemas/` (validation **Zod** des entrées),
-`src/{components,views,hooks,services,utils}`, `shared/{interfaces,schemas}`
-(layout front-back : entités et schémas partagés front/back), Makefile, biome.json,
-`.nvmrc` (version Node unique), scripts/check-max-lines.sh, workflows CI, template
-d'issue commun (`.github/ISSUE_TEMPLATE/` ou `.gitlab/issue_templates/`),
-git init (main + dev).
+Le générateur crée un projet **immédiatement fonctionnel** : README.md, CLAUDE.md,
+docs/ (14 docs, adaptées au layout), .claude/ (hooks : routage de modèles
+`route-task.sh`, emplacement des tests, 300 lignes, dépendances, rappels doc/tests ;
+settings.json ; subagents `opus-architect`/`sonnet-dev`/`haiku-mechanic` ; skills
+`/create-issue`, `/create-feat`, `/merge-prod`), **package.json + tsconfig.json
+câblés** (Zod, Jest, Biome ; Next.js ou Vite réellement installés selon le
+framework ; serveur back node:http minimal en front-back ; tsup en package),
+structure de tests + configs Jest/Stryker/Cypress/Postman + test d'exemple qui
+passe, `src/interfaces/` (entités `IXxx` + `types.ts`), `src/schemas/` (validation
+**Zod**), `src/{components,views,hooks,services,utils}`, `shared/{interfaces,schemas}`
+(front-back), **Docker** (Dockerfile multi-stage + docker-compose.yml + .env.example,
+sauf package), Makefile aux cibles réelles (install/dev/build/lint/test-*),
+biome.json, `.nvmrc`, scripts/check-max-lines.sh, workflows CI, template d'issue
+commun (`.github/ISSUE_TEMPLATE/` ou `.gitlab/issue_templates/`), git init (main + dev).
 
 ## 3. Personnaliser (obligatoire)
 
@@ -90,19 +94,19 @@ connu grâce à la conversation :
 - **README.md / CLAUDE.md** : remplacer les TODO de présentation par le périmètre réel
   décrit par l'utilisateur (fonctionnalités, contraintes, choix techniques).
 - **docs/architecture.md** : premiers choix techniques connus.
-- **Layout `single` ou `package`** : adapter les tableaux de tests de CLAUDE.md et
-  docs/testing.md aux chemins réels (`tests/...` à la racine, pas `front/`/`back/` ;
-  pour un `package`, retirer les volets e2e/système/Cypress/Postman et Docker).
-- Si l'utilisateur veut initialiser le code tout de suite : `create-next-app` /
-  `create vite` dans le(s) bon(s) dossier(s), **installer Zod** (`npm install zod` —
-  la validation des entrées via `schemas/` est obligatoire, voir CLAUDE.md), puis
-  câbler les cibles réelles du Makefile (install, dev, lint, test-*, build) et commit
-  sur une branche dédiée.
+- **Rien d'autre à adapter au layout** : le générateur ajuste lui-même les tableaux
+  de tests, Docker, Storybook et les cibles Makefile selon layout/framework/options
+  (blocs conditionnels des templates) — contrôler, ne pas réécrire.
+- Le projet est **immédiatement fonctionnel** : `make install` puis `make lint`,
+  `make test`, `make build` doivent passer (package.json, tsconfig, framework,
+  Jest + Zod déjà câblés). Lancer `make install && make test` pour le prouver.
 
 ## 4. Vérification finale
 
+- [ ] `make install && make lint && make test` passent dans `<target>`.
 - [ ] `bash <target>/scripts/check-max-lines.sh <target>` passe.
-- [ ] Les hooks sont exécutables (`ls -l <target>/.claude/hooks/`).
+- [ ] Les hooks sont exécutables (`ls -l <target>/.claude/hooks/`) et les subagents
+      présents (`ls <target>/.claude/agents/` : opus-architect, sonnet-dev, haiku-mechanic).
 - [ ] `git -C <target> log --oneline` montre le commit de bootstrap, branches `main` + `dev`.
 - [ ] Résumer à l'utilisateur : structure créée, choix retenus, prochaines étapes
       (protections de branches sur GitHub/GitLab, premier `/create-feat`).

@@ -20,13 +20,13 @@ f=$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty')
 deny() { jq -n --arg r "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'; exit 0; }
 
 case "$f" in
-  *.integration.spec.ts|*.integration.spec.tsx)
+  *.integration.spec.ts|*.integration.spec.tsx|*.integration.spec.js|*.integration.spec.jsx)
     case "$f" in
       */front/tests/integration/*|front/tests/integration/*|*/tests/integration/*|tests/integration/*) exit 0 ;;
       *) deny "Test d'intégration hors de {front/,}tests/integration/ — crée le fichier au bon endroit (voir docs/testing.md)." ;;
     esac
     ;;
-  *.spec.ts|*.spec.tsx)
+  *.spec.ts|*.spec.tsx|*.spec.js|*.spec.jsx)
     case "$f" in
       */front/tests/unitaire/*|front/tests/unitaire/*|*/tests/unitaire/*|tests/unitaire/*) exit 0 ;;
       *) deny "Test unitaire hors de {front/,}tests/unitaire/ — crée le fichier au bon endroit (voir docs/testing.md)." ;;
@@ -38,7 +38,7 @@ case "$f" in
       *) deny "Spec Cypress hors de {front/,}tests/e2e/ — crée le fichier au bon endroit (voir docs/testing.md)." ;;
     esac
     ;;
-  *.test.ts)
+  *.test.ts|*.test.tsx|*.test.js|*.test.jsx)
     case "$f" in
       */tests/acceptance/*|tests/acceptance/*) exit 0 ;;
       */back/tests/unitaire/*|back/tests/unitaire/*) exit 0 ;;
@@ -46,8 +46,7 @@ case "$f" in
       */back/tests/systeme/*|back/tests/systeme/*) exit 0 ;;
       */back/*|back/*) deny "Test back hors de back/tests/{unitaire,integration,systeme}/ — crée le fichier au bon endroit (voir docs/testing.md)." ;;
       */tests/unitaire/*|tests/unitaire/*|*/tests/integration/*|tests/integration/*|*/tests/systeme/*|tests/systeme/*) exit 0 ;;
-      */tests/*|tests/*) deny "Test .test.ts hors de tests/{unitaire,integration,systeme}/ — crée le fichier au bon endroit (voir docs/testing.md)." ;;
-      *) exit 0 ;;
+      *) deny "Test *.test.* hors de tests/{unitaire,integration,systeme}/ (ou tests/acceptance/) — crée le fichier au bon endroit (voir docs/testing.md)." ;;
     esac
     ;;
   *) exit 0 ;;

@@ -1,14 +1,20 @@
 name: ci
-# CI du plugin : smoke test du générateur (trois layouts + invariants + hooks).
+# CI du plugin : smoke test du générateur (layouts + invariants + hooks + npm).
+# Matrice ubuntu + macos : les hooks ont des branches BSD (date -j/-v) que seul
+# macOS exerce — la plateforme principale de l'auteur.
 on:
   push:
     branches: [main]
   pull_request:
 jobs:
   smoke:
-    name: Smoke test du générateur
-    runs-on: ubuntu-latest
+    name: Smoke test du générateur (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Smoke test (3 layouts)
+      - name: Smoke test (4 layouts)
         run: ./scripts/smoke-test.sh

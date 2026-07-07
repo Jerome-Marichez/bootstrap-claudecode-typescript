@@ -15,5 +15,4 @@ jobs:
       - name: Installation
         run: make install
       - name: Build
-        run: |
-          echo "TODO : make build (next build / vite build + build back)"
+        run: make build

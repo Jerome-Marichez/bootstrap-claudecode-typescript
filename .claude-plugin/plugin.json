@@ -1,8 +1,20 @@
 {
   "name": "bootstrap-claudecode-typescript",
-  "description": "Initialise un projet TypeScript/React avec la structure standard : README + docs/, CLAUDE.md, hooks & skills Claude Code, structure de tests (unitaire/integration/e2e/systeme), validation Zod des entrees, dossier shared/ front-back, lint Biome + regle 300 lignes, workflows GitHub Actions ou GitLab CI.",
-  "version": "0.2.0",
+  "description": "Initialise un projet TypeScript/React immediatement fonctionnel : README + docs/, CLAUDE.md, hooks (routage de modeles, tests, 300 lignes, dependances), subagents opus/sonnet/haiku, skills Claude Code, package.json + tsconfig cables (Next.js ou Vite, Jest, Zod, Biome), Docker multi-stage + compose, structure de tests avec exemple qui passe, workflows GitHub Actions ou GitLab CI reels.",
+  "version": "0.3.0",
   "author": {
     "name": "Marichez Jérôme"
-  }
+  },
+  "license": "MIT",
+  "keywords": [
+    "bootstrap",
+    "typescript",
+    "react",
+    "nextjs",
+    "vite",
+    "scaffolding",
+    "hooks",
+    "model-routing",
+    "ci"
+  ]
 }

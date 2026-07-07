@@ -13,6 +13,6 @@ jobs:
         with:
           node-version-file: .nvmrc
       - name: Biome
-        run: npx @biomejs/biome@2.0.0 check .
+        run: npx @biomejs/biome@{{BIOME_VERSION}} check .
       - name: Limite 300 lignes / fichier
         run: ./scripts/check-max-lines.sh

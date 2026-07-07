@@ -3,8 +3,8 @@
 #   MR -> dev  : lint (Biome + 300 lignes) + tests unitaires/intégration
 #   MR -> main : e2e + système + build
 
-# Version Node alignée sur le .nvmrc du projet (à bumper ensemble).
-image: node:24
+# Version Node alignée sur le .nvmrc du projet (point de vérité : bootstrap.sh).
+image: node:{{NODE_VERSION}}
 
 stages:
   - lint
@@ -16,7 +16,7 @@ lint:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"'
   script:
-    - npx @biomejs/biome@2.0.0 check .
+    - npx @biomejs/biome@{{BIOME_VERSION}} check .
     - ./scripts/check-max-lines.sh
 
 tests:
@@ -50,4 +50,4 @@ build:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
   script:
     - make install
-    - echo "TODO : make build"
+    - make build

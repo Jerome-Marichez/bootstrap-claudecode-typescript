@@ -19,11 +19,21 @@
 #   (tests/acceptance/ + uat/{disponibilite,securite,performance,robustesse}).
 #
 # Tokens substitués : {{PROJECT_NAME}} {{PROJECT_DESC}} {{OWNER}} {{FRAMEWORK}}
+#                     {{NODE_VERSION}} {{BIOME_VERSION}}
+#
+# Blocs conditionnels dans les templates : une ligne contenant «>>only:tag1,tag2»
+# ouvre un bloc conservé seulement si l'un des tags est actif (layout, framework,
+# docker, storybook, e2e, system, acceptance, tests-setup, ci-github/gitlab) ;
+# une ligne contenant «<<only» le ferme. Les lignes marqueurs sont retirées.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TPL="$ROOT/templates"
+
+# Points de vérité uniques — propagés partout via les tokens.
+NODE_VERSION="24"
+BIOME_VERSION="^2.0.0"
 
 NAME=""
 DESC=""
@@ -89,14 +99,38 @@ fi
 
 mkdir -p "$TARGET"
 
-# Copie un template en substituant les tokens.
+# Tags actifs pour les blocs conditionnels (>>only:.../<<only) des templates.
+# Attention : les blocs ne s'imbriquent pas — utiliser un tag composite (ex. postman).
+KEYS="$LAYOUT $FRAMEWORK ci-$CI"
+if [ "$LAYOUT" != "package" ]; then KEYS="$KEYS docker e2e"; fi
+if [ "$LAYOUT" != "package" ] || [ "$POSTMAN" = 1 ]; then KEYS="$KEYS system"; fi
+if [ "$LAYOUT" = "package" ] && [ "$POSTMAN" = 1 ]; then KEYS="$KEYS postman"; fi
+if [ "$STORYBOOK" = 1 ]; then KEYS="$KEYS storybook"; fi
+if [ "$ACCEPTANCE" = 1 ]; then KEYS="$KEYS acceptance"; fi
+if [ "$TESTS_SETUP" = 1 ]; then KEYS="$KEYS tests-setup"; fi
+
+# Copie un template en substituant les tokens puis en filtrant les blocs only.
 render() { # render <src> <dst>
   mkdir -p "$(dirname "$2")"
   sed -e "s/{{PROJECT_NAME}}/$NAME/g" \
       -e "s/{{PROJECT_DESC}}/$(printf '%s' "$DESC" | sed 's/[&/\]/\\&/g')/g" \
       -e "s/{{OWNER}}/$(printf '%s' "$OWNER" | sed 's/[&/\]/\\&/g')/g" \
       -e "s/{{FRAMEWORK}}/$(printf '%s' "$FRAMEWORK_LABEL" | sed 's/[&/\]/\\&/g')/g" \
-      "$1" > "$2"
+      -e "s/{{NODE_VERSION}}/$NODE_VERSION/g" \
+      -e "s/{{BIOME_VERSION}}/$(printf '%s' "$BIOME_VERSION" | sed 's/[&/\]/\\&/g')/g" \
+      "$1" \
+  | awk -v keys=" $KEYS " '
+      index($0, ">>only:") {
+        tags = $0
+        sub(/.*>>only:/, "", tags); sub(/[^a-z0-9,-].*/, "", tags)
+        keep = 0
+        n = split(tags, a, ",")
+        for (i = 1; i <= n; i++) if (index(keys, " " a[i] " ")) keep = 1
+        skip = !keep; next
+      }
+      index($0, "<<only") { skip = 0; next }
+      !skip
+    ' > "$2"
 }
 
 echo "→ Documentation (README.md, CLAUDE.md, docs/)"
@@ -105,35 +139,27 @@ render "$TPL/CLAUDE.md.tpl"  "$TARGET/CLAUDE.md"
 for f in "$TPL"/docs/*.md; do
   base="$(basename "$f")"
   if [ "$STORYBOOK" = 0 ] && [ "$base" = "storybook.md" ]; then continue; fi
+  if [ "$LAYOUT" = "package" ] && [ "$base" = "docker.md" ]; then continue; fi
   render "$f" "$TARGET/docs/$base"
 done
-if [ "$STORYBOOK" = 0 ]; then
-  # Retire les références à Storybook des index de doc (portable macOS/Linux).
-  for doc in "$TARGET/README.md" "$TARGET/CLAUDE.md"; do
-    grep -iv 'storybook' "$doc" > "$doc.tmp" && mv "$doc.tmp" "$doc"
-  done
-fi
 
 echo "→ Outillage (Makefile, biome.json, .gitignore, .nvmrc, scripts/)"
-printf '24\n' > "$TARGET/.nvmrc"   # version Node unique (workflows via node-version-file)
+printf '%s\n' "$NODE_VERSION" > "$TARGET/.nvmrc"   # version Node unique (workflows via node-version-file)
 render "$TPL/Makefile.tpl"   "$TARGET/Makefile"
-if [ "$STORYBOOK" = 0 ]; then
-  # Retire les cibles Storybook du Makefile (et de .PHONY).
-  awk '/^storybook(-build)?:/{skip=1;next} skip&&/^\t/{next} skip&&/^$/{skip=0;next} {skip=0;print}' \
-    "$TARGET/Makefile" > "$TARGET/Makefile.tmp" && mv "$TARGET/Makefile.tmp" "$TARGET/Makefile"
-  sed 's/ storybook storybook-build//' "$TARGET/Makefile" > "$TARGET/Makefile.tmp" && mv "$TARGET/Makefile.tmp" "$TARGET/Makefile"
-fi
 render "$TPL/biome.json"     "$TARGET/biome.json"
 render "$TPL/gitignore.tpl"  "$TARGET/.gitignore"
 mkdir -p "$TARGET/scripts"
 cp "$TPL/scripts/check-max-lines.sh" "$TARGET/scripts/check-max-lines.sh"
 chmod +x "$TARGET/scripts/check-max-lines.sh"
 
-echo "→ Claude Code (.claude : hooks, settings, skills)"
-mkdir -p "$TARGET/.claude/hooks" "$TARGET/.claude/skills"
+echo "→ Claude Code (.claude : hooks, settings, agents, skills)"
+mkdir -p "$TARGET/.claude/hooks" "$TARGET/.claude/skills" "$TARGET/.claude/agents"
 for f in "$TPL"/hooks/*.sh; do
   render "$f" "$TARGET/.claude/hooks/$(basename "$f")"
   chmod +x "$TARGET/.claude/hooks/$(basename "$f")"
+done
+for f in "$TPL"/agents/*.md; do
+  render "$f" "$TARGET/.claude/agents/$(basename "$f")"
 done
 render "$TPL/claude-settings.json" "$TARGET/.claude/settings.json"
 for f in "$TPL"/skills/*.md; do
@@ -176,6 +202,51 @@ else
   done
 fi
 
+echo "→ Code applicatif (package.json, tsconfig, framework : $FRAMEWORK_LABEL)"
+# render_front <dossier> : package.json + tsconfig + fichiers du framework choisi.
+render_front() { # $1 = racine de l'app front ("" pour la racine du projet)
+  local dst="${1:+$1/}"
+  render "$TPL/app/package-front-$FRAMEWORK.json.tpl" "$TARGET/${dst}package.json"
+  render "$TPL/app/tsconfig-$FRAMEWORK.json.tpl"      "$TARGET/${dst}tsconfig.json"
+  if [ "$FRAMEWORK" = "nextjs" ]; then
+    render "$TPL/app/next.config.mjs.tpl" "$TARGET/${dst}next.config.mjs"
+    render "$TPL/app/app-layout.tsx.tpl"  "$TARGET/${dst}src/app/layout.tsx"
+    render "$TPL/app/app-page.tsx.tpl"    "$TARGET/${dst}src/app/page.tsx"
+  else
+    render "$TPL/app/vite.config.ts.tpl"  "$TARGET/${dst}vite.config.ts"
+    render "$TPL/app/index.html.tpl"      "$TARGET/${dst}index.html"
+    render "$TPL/app/main.tsx.tpl"        "$TARGET/${dst}src/main.tsx"
+  fi
+}
+if [ "$LAYOUT" = "front-back" ]; then
+  render_front "front"
+  sed "s/\"name\": \"$NAME\"/\"name\": \"$NAME-front\"/" "$TARGET/front/package.json" > "$TARGET/front/package.json.tmp" \
+    && mv "$TARGET/front/package.json.tmp" "$TARGET/front/package.json"
+  render "$TPL/app/package-back.json.tpl" "$TARGET/back/package.json"
+  sed "s/\"name\": \"$NAME\"/\"name\": \"$NAME-back\"/" "$TARGET/back/package.json" > "$TARGET/back/package.json.tmp" \
+    && mv "$TARGET/back/package.json.tmp" "$TARGET/back/package.json"
+  render "$TPL/app/tsconfig-node.json.tpl" "$TARGET/back/tsconfig.json"
+  render "$TPL/app/back-index.ts.tpl"      "$TARGET/back/src/index.ts"
+elif [ "$LAYOUT" = "package" ]; then
+  render "$TPL/app/package-lib.json.tpl"   "$TARGET/package.json"
+  render "$TPL/app/tsconfig-node.json.tpl" "$TARGET/tsconfig.json"
+  render "$TPL/app/lib-index.ts.tpl"       "$TARGET/src/index.ts"
+else
+  render_front ""
+fi
+
+if [ "$LAYOUT" != "package" ]; then
+  echo "→ Docker (Dockerfile, docker-compose.yml, .env.example)"
+  render "$TPL/docker/docker-compose.yml.tpl" "$TARGET/docker-compose.yml"
+  render "$TPL/docker/env.example.tpl"        "$TARGET/.env.example"
+  if [ "$LAYOUT" = "front-back" ]; then
+    render "$TPL/docker/Dockerfile.tpl" "$TARGET/front/Dockerfile"
+    render "$TPL/docker/Dockerfile.tpl" "$TARGET/back/Dockerfile"
+  else
+    render "$TPL/docker/Dockerfile.tpl" "$TARGET/Dockerfile"
+  fi
+fi
+
 echo "→ Structure de tests (layout : $LAYOUT)"
 if [ "$LAYOUT" = "front-back" ]; then
   mkdir -p "$TARGET/front/tests/unitaire" "$TARGET/front/tests/integration" "$TARGET/front/tests/e2e" \
@@ -216,6 +287,15 @@ if [ "$TESTS_SETUP" = 1 ]; then
     render "$TPL/tests-setup/jest.config.mjs"     "$TARGET/jest.config.mjs"
     render "$TPL/tests-setup/stryker.config.json" "$TARGET/stryker.config.json"
     render "$TPL/tests-setup/cypress.config.ts"   "$TARGET/cypress.config.ts"
+  fi
+  # Test unitaire d'exemple : valide la chaîne Jest + ts-jest + tsconfig dès le bootstrap.
+  if [ "$LAYOUT" = "front-back" ]; then
+    render "$TPL/tests-setup/exemple-unit.ts.tpl" "$TARGET/front/tests/unitaire/exemple.spec.ts"
+    render "$TPL/tests-setup/exemple-unit.ts.tpl" "$TARGET/back/tests/unitaire/exemple.test.ts"
+  elif [ "$LAYOUT" = "package" ]; then
+    render "$TPL/tests-setup/exemple-unit.ts.tpl" "$TARGET/tests/unitaire/exemple.test.ts"
+  else
+    render "$TPL/tests-setup/exemple-unit.ts.tpl" "$TARGET/tests/unitaire/exemple.spec.ts"
   fi
   # Postman — validation rejouable de l'API (package : seulement si --postman)
   if [ "$LAYOUT" = "front-back" ]; then
@@ -280,18 +360,10 @@ echo ""
 echo "✔ Projet '$NAME' généré dans $TARGET (framework : $FRAMEWORK_LABEL)"
 echo "  Prochaines étapes :"
 echo "   1. Compléter la présentation dans README.md / CLAUDE.md et les docs/ (sections TODO)."
-if [ "$LAYOUT" = "package" ]; then
-  echo "   2. Initialiser le package : npm init + tsconfig (build tsup/tsc), exports dans package.json."
-elif [ "$FRAMEWORK" = "nextjs" ]; then
-  echo "   2. Initialiser le code : npx create-next-app@latest (TypeScript) + back selon le layout."
-else
-  echo "   2. Initialiser le code : npm create vite@latest (react-ts) + back selon le layout."
-fi
-echo "   3. Installer Zod (npm install zod) — validation des entrées obligatoire (schemas/)."
-echo "   4. Adapter le Makefile aux commandes réelles du projet."
+echo "   2. make install puis make lint / make test — la chaîne (Zod, Jest, Biome) est déjà câblée."
 if [ "$STORYBOOK" = 1 ]; then
-  echo "   5. Initialiser Storybook : npx storybook@latest init (voir docs/storybook.md)."
-  echo "   6. Créer le dépôt distant (gh repo create), pousser main + dev, protéger main."
+  echo "   3. Initialiser Storybook : npx storybook@latest init (voir docs/storybook.md)."
+  echo "   4. Créer le dépôt distant (gh repo create), pousser main + dev, protéger main."
 else
-  echo "   5. Créer le dépôt distant (gh repo create), pousser main + dev, protéger main."
+  echo "   3. Créer le dépôt distant (gh repo create), pousser main + dev, protéger main."
 fi
