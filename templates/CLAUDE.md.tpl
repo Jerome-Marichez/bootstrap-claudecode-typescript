@@ -99,8 +99,12 @@ Règles :
 ## Versionnage — Semantic Versioning
 
 Le projet respecte **toujours** la convention **SemVer** (`MAJEUR.MINEUR.CORRECTIF`) :
-version dans `package.json`, releases taguées `vX.Y.Z`, incrément selon la nature du
-changement (rupture → majeur, fonctionnalité → mineur, correctif → patch). Les
+version dans `{{VERSION_FILE}}` (point de vérité), releases taguées `vX.Y.Z`, incrément
+selon la nature du changement (rupture → majeur, fonctionnalité → mineur,
+correctif → patch). La release est **automatique** : à chaque push sur `main`, la CI
+lit la version de `{{VERSION_FILE}}` et crée le tag `vX.Y.Z` + la release s'ils
+n'existent pas encore. **Toute modification fusionnée sur `main` DOIT donc bumper la
+version dans le même commit/PR**, sinon aucune release n'est publiée. Les
 **dépendances** sont soumises à la même exigence par le hook `check-new-dependency.sh` :
 un paquet dont la version ne respecte pas SemVer (ou dont l'information est
 indisponible) est **refusé**.

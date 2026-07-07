@@ -2,6 +2,7 @@
 # Équivalent GitLab des workflows GitHub :
 #   MR -> dev  : lint (Biome + 300 lignes) + tests unitaires/intégration
 #   MR -> main : e2e + système + build
+#   push main  : tag vX.Y.Z + release SemVer (version lue dans {{VERSION_FILE}})
 
 # Version Node alignée sur le .nvmrc du projet (point de vérité : bootstrap.sh).
 image: node:{{NODE_VERSION}}
@@ -10,6 +11,7 @@ stages:
   - lint
   - test
   - verify-main
+  - release
 
 lint:
   stage: lint
@@ -51,3 +53,18 @@ build:
   script:
     - make install
     - make build
+
+# Tag + release SemVer sur main. La version DOIT être bumpée dans le même
+# commit/MR que le changement (voir CLAUDE.md) : si le tag vX.Y.Z existe déjà,
+# le job s'arrête sans rien publier.
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([0-9]*\.[0-9]*\.[0-9]*\)".*/\1/p' {{VERSION_FILE}} | head -1)
+    - if [ -z "$VERSION" ]; then echo "Version SemVer introuvable dans {{VERSION_FILE}}"; exit 1; fi
+    - TAG="v$VERSION"
+    - if git ls-remote --tags "$CI_REPOSITORY_URL" "refs/tags/$TAG" | grep -q .; then echo "Le tag $TAG existe déjà — rien à faire."; exit 0; fi
+    - release-cli create --name "$TAG" --tag-name "$TAG" --ref "$CI_COMMIT_SHA" --description "Release $TAG"

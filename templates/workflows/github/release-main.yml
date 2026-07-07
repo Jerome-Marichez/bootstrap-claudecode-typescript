@@ -1,0 +1,43 @@
+name: release
+# À chaque push sur main : lit la version SemVer dans {{VERSION_FILE}} et,
+# si le tag vX.Y.Z n'existe pas encore, crée le tag + la GitHub Release.
+# La version DOIT être bumpée (SemVer) dans le même commit/PR que le changement
+# fusionné sur main (voir CLAUDE.md), sinon aucune release n'est publiée.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag-release:
+    name: Tag + release SemVer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Créer le tag et la release si nécessaire
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION=$(jq -r .version {{VERSION_FILE}})
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Version invalide dans {{VERSION_FILE}} : $VERSION" >&2
+            exit 1
+          fi
+          TAG="v$VERSION"
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Le tag $TAG existe déjà — rien à faire."
+            exit 0
+          fi
+          PREV=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$PREV" ]; then
+            NOTES=$(git log --pretty='- %s' "$PREV"..HEAD)
+          else
+            NOTES=$(git log --pretty='- %s' HEAD)
+          fi
+          gh release create "$TAG" --title "$TAG" --notes "$NOTES" --target "$GITHUB_SHA"
+          echo "Release $TAG créée."

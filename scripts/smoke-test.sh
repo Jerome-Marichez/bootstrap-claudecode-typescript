@@ -38,7 +38,8 @@ check "nom non kebab-case refusé" bad_name_refused
 
 echo "→ Layout front-back (Next.js)"
 check "shared/schemas généré"            test -f "$TMP/fb/shared/schemas/exemple.schema.ts"
-check "5 workflows GitHub"               test "$(ls "$TMP/fb/.github/workflows" | wc -l)" -eq 5
+check "6 workflows GitHub"               test "$(ls "$TMP/fb/.github/workflows" | wc -l)" -eq 6
+check "release-main sur front/package"   grep -q 'front/package.json' "$TMP/fb/.github/workflows/release-main.yml"
 check "template d'issue GitHub (+ frontmatter)" grep -q '^name:' "$TMP/fb/.github/ISSUE_TEMPLATE/issue.md"
 check "collection Postman côté back"     test -f "$TMP/fb/back/tests/systeme/postman_collection.json"
 check "dossiers UAT (--acceptance)"      test -d "$TMP/fb/tests/acceptance/uat/robustesse"
@@ -61,6 +62,7 @@ check "test d'exemple front + back"      bash -c "test -f '$TMP/fb/front/tests/u
 echo "→ Layout single (Vite, git)"
 check "tests/systeme + Postman"          test -f "$TMP/single/tests/systeme/postman_collection.json"
 check "ci-main-system présent"           test -f "$TMP/single/.github/workflows/ci-main-system.yml"
+check "release-main présent"             grep -q 'jq -r .version package.json' "$TMP/single/.github/workflows/release-main.yml"
 check "config Vite + index.html"         bash -c "test -f '$TMP/single/vite.config.ts' && test -f '$TMP/single/index.html' && test -f '$TMP/single/src/main.tsx'"
 check "package.json avec vite"           grep -q '"vite"' "$TMP/single/package.json"
 check "pas de fichiers Next.js"          bash -c "! test -e '$TMP/single/next.config.mjs' && ! test -d '$TMP/single/src/app'"
@@ -74,6 +76,7 @@ check "template d'issue GitLab"          test -f "$TMP/pkg/.gitlab/issue_templat
 check "issue GitLab sans frontmatter"    bash -c "! grep -q '^name:' '$TMP/pkg/.gitlab/issue_templates/issue.md'"
 check ".gitlab-ci.yml sans job e2e"      bash -c "! grep -q '^e2e:' '$TMP/pkg/.gitlab-ci.yml'"
 check ".gitlab-ci.yml sans job system"   bash -c "! grep -q '^system:' '$TMP/pkg/.gitlab-ci.yml'"
+check ".gitlab-ci.yml avec job release"  grep -q '^release:' "$TMP/pkg/.gitlab-ci.yml"
 check "Makefile sans cible storybook"    bash -c "! grep -q '^storybook' '$TMP/pkg/Makefile'"
 check "Makefile valide après filtrage"   make -C "$TMP/pkg" -n help
 check "pas de mention Storybook (README/CLAUDE)" bash -c "! grep -qi storybook '$TMP/pkg/README.md' '$TMP/pkg/CLAUDE.md'"

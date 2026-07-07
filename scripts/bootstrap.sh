@@ -109,6 +109,9 @@ if [ "$STORYBOOK" = 1 ]; then KEYS="$KEYS storybook"; fi
 if [ "$ACCEPTANCE" = 1 ]; then KEYS="$KEYS acceptance"; fi
 if [ "$TESTS_SETUP" = 1 ]; then KEYS="$KEYS tests-setup"; fi
 
+# Fichier point de vérité de la version SemVer (workflow de release sur main).
+if [ "$LAYOUT" = "front-back" ]; then VERSION_FILE="front/package.json"; else VERSION_FILE="package.json"; fi
+
 # Copie un template en substituant les tokens puis en filtrant les blocs only.
 render() { # render <src> <dst>
   mkdir -p "$(dirname "$2")"
@@ -118,6 +121,7 @@ render() { # render <src> <dst>
       -e "s/{{FRAMEWORK}}/$(printf '%s' "$FRAMEWORK_LABEL" | sed 's/[&/\]/\\&/g')/g" \
       -e "s/{{NODE_VERSION}}/$NODE_VERSION/g" \
       -e "s/{{BIOME_VERSION}}/$(printf '%s' "$BIOME_VERSION" | sed 's/[&/\]/\\&/g')/g" \
+      -e "s|{{VERSION_FILE}}|$VERSION_FILE|g" \
       "$1" \
   | awk -v keys=" $KEYS " '
       index($0, ">>only:") {
