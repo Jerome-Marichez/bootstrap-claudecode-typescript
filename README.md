@@ -70,30 +70,40 @@ connecté à la CLI GitHub (`gh api user`), à défaut `git config user.name` ;
 | Template d'issue | `.github/ISSUE_TEMPLATE/issue.md` ou `.gitlab/issue_templates/issue.md` — modèle **commun** (type bug/feature/documentation/autre, description, critères d'acceptation, impacts), imposé par le skill `/create-issue`, sans emoji |
 | Git | `git init` + commit de bootstrap + branches `main` et `dev` |
 
-## Benchmark — tokens économisés
+## Benchmark — tokens et coût API mesurés
 
-Le générateur écrit 39 à 49 fichiers (~1 500 lignes) en une seule commande shell.
-Sans le plugin, Claude Opus 4.8 devrait produire chaque fichier via des appels
-`Write` — c'est-à-dire émettre tout leur contenu en tokens de sortie.
+Benchmark empirique (juillet 2026) : pour chaque layout, un agent **Claude
+Opus 4.8** a reçu la spécification complète de la structure et l'interdiction
+d'utiliser le générateur — il a écrit chaque fichier lui-même via `Write`.
+Un quatrième agent identique a exécuté le plugin (`bootstrap.sh`, layout
+package). Les tokens sont l'**usage API réel** agrégé depuis les transcripts
+(champ `usage` de chaque réponse), le coût est calculé au tarif Opus 4.8
+(entrée 5 $/M, sortie 25 $/M, écriture cache 6,25 $/M, lecture cache 0,50 $/M).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/benchmark-dark.svg">
-  <img src="assets/benchmark-light.svg" alt="Tokens de sortie estimés par layout : sans plugin ≈ 18 400 à 20 400 tokens (Opus 4.8 écrivant chaque fichier), avec plugin ≈ 700 tokens, soit ~96-97 % d'économie" width="760">
+  <img src="assets/benchmark-light.svg" alt="Tokens de sortie mesurés par layout : sans plugin 22 011 à 25 801 tokens (Opus 4.8 écrivant chaque fichier, 2,36 à 11,04 $ par run), avec plugin 1 007 tokens (0,41 $), soit ~95-96 % d'économie" width="760">
 </picture>
 
-| Layout | Fichiers | Lignes | Sans plugin (Opus 4.8, est.) | Avec plugin (est.) | Économie |
-|---|---|---|---|---|---|
-| `front-back` | 49 | ~1 600 | ≈ 20 400 tokens | ≈ 700 tokens | **≈ 97 %** |
-| `single` | 43 | ~1 500 | ≈ 19 200 tokens | ≈ 700 tokens | **≈ 96 %** |
-| `package` | 39 | ~1 450 | ≈ 18 400 tokens | ≈ 700 tokens | **≈ 96 %** |
+| Run | Fichiers écrits | Requêtes API | Tokens sortie | Tokens entrée (+ cache) | Coût API total | Durée |
+|---|---|---|---|---|---|---|
+| Sans plugin — `front-back` | 62 | 74 | **23 059** | 2 916 308 | **11,04 $** | 6 min 31 s |
+| Sans plugin — `single` | 52 | 57 | **25 801** | 2 026 995 | **2,36 $** | 5 min 58 s |
+| Sans plugin — `package` | 43 | 54 | **22 011** | 1 746 445 | **4,12 $** | 5 min 00 s |
+| **Avec plugin** — `package` | 43 | 9 | **1 007** | 154 768 | **0,41 $** | **20 s** |
 
-**Méthodologie** (estimation, pas une mesure API) : contenu réellement généré par
-`bootstrap.sh --acceptance` mesuré en caractères puis converti à ~4 caractères/token,
-plus un surcoût d'environ 60 tokens par appel `Write` (chemin + enrobage JSON).
-Côté plugin : chargement de la skill, un appel Bash et le résumé (~700 tokens).
-L'économie réelle est supérieure : sans générateur, le modèle relit et raisonne
-sur chaque fichier (tokens d'entrée et de réflexion non comptés ici), avec un
-résultat moins déterministe d'une exécution à l'autre.
+Soit **~95-96 % de tokens de sortie en moins**, un coût divisé par **6 à 27**
+selon le layout, et une exécution **15 à 20× plus rapide** — avec un résultat
+déterministe (le bras manuel produit un nombre de fichiers variable et un
+contenu différent à chaque run).
+
+**Méthodologie et limites** : n=1 run par layout (la variance inter-run n'est
+pas mesurée — l'écart de coût entre layouts vient surtout du comportement du
+cache de prompt, visible sur `front-back` : 1,5 M de tokens d'écriture cache).
+Le coût du bras plugin est quasi indépendant du layout (une commande Bash +
+vérification). Les agents « sans plugin » recevaient la spec exacte des
+fichiers attendus ; en conditions réelles, sans spec, le modèle dépenserait
+davantage en exploration et produirait un résultat encore moins conforme.
 
 ## Hooks embarqués
 
