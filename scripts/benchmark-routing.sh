@@ -50,8 +50,9 @@ run_arm() { # run_arm <arm> <run_index>
     i=$((i+1)); id=$(printf '%02d' "$i")
     p="$prompt"; [ "$arm" = "no-routing" ] && p="!! $prompt"
     echo "  [$arm/$run] $id ($cat) : $prompt"
+    # </dev/null : sans ça, claude consomme le stdin de la boucle (la liste des prompts).
     ( cd "$work" && claude -p "$p" --model "$MODEL" --output-format json \
-        --dangerously-skip-permissions ) >"$res/$id.json" 2>"$res/$id.err" || true
+        --dangerously-skip-permissions </dev/null ) >"$res/$id.json" 2>"$res/$id.err" || true
     jq -n --arg cat "$cat" --arg prompt "$prompt" \
       --slurpfile r "$res/$id.json" \
       '{cat: $cat, prompt: $prompt,
