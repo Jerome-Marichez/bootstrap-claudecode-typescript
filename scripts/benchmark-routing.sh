@@ -14,10 +14,14 @@
 #
 # Usage : benchmark-routing.sh --app <projet-pristine> --out <dossier-résultats>
 #         [--runs N] [--prompts fichier] [--model opus]
+#         [--install-cmd "make install"] [--lint-cmd "make lint"] [--test-cmd "make test-unit"]
+# Fonctionne sur tout projet contenant un .claude/ du plugin (généré ou greffé),
+# ex. une implémentation RealWorld : --install-cmd "npm install" --test-cmd "CI=true npx react-scripts test --watchAll=false".
 # Nécessite : claude (CLI), jq, rsync, make, npm. Coût : appels API réels.
 set -eu
 
 APP="" ; OUT="" ; RUNS=1 ; MODEL="opus"
+INSTALL_CMD="make install" ; LINT_CMD="make lint" ; TEST_CMD="make test-unit"
 PROMPTS="$(cd "$(dirname "$0")" && pwd)/benchmark-prompts.txt"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -26,6 +30,9 @@ while [ $# -gt 0 ]; do
     --runs) RUNS="$2"; shift 2 ;;
     --prompts) PROMPTS="$2"; shift 2 ;;
     --model) MODEL="$2"; shift 2 ;;
+    --install-cmd) INSTALL_CMD="$2"; shift 2 ;;
+    --lint-cmd) LINT_CMD="$2"; shift 2 ;;
+    --test-cmd) TEST_CMD="$2"; shift 2 ;;
     *) echo "Option inconnue : $1" >&2; exit 1 ;;
   esac
 done
@@ -43,7 +50,7 @@ run_arm() { # run_arm <arm> <run_index>
   res="$OUT/results-$arm-$run"
   rm -rf "$work"; mkdir -p "$res"
   rsync -a "$APP/" "$work/"
-  ( cd "$work" && make install >"$res/install.log" 2>&1 ) || { echo "make install KO ($arm/$run)" >&2; return 1; }
+  ( cd "$work" && sh -c "$INSTALL_CMD" >"$res/install.log" 2>&1 ) || { echo "make install KO ($arm/$run)" >&2; return 1; }
   i=0
   grep -v '^#' "$PROMPTS" | while IFS="$(printf '\t')" read -r cat prompt; do
     [ -n "$prompt" ] || continue
@@ -65,8 +72,8 @@ run_arm() { # run_arm <arm> <run_index>
       >"$res/$id.summary.json" 2>/dev/null || echo '{"is_error":true}' >"$res/$id.summary.json"
   done
   lint=KO; test=KO
-  ( cd "$work" && make lint      >"$res/lint.log" 2>&1 ) && lint=OK
-  ( cd "$work" && make test-unit >"$res/test.log" 2>&1 ) && test=OK
+  ( cd "$work" && sh -c "$LINT_CMD" >"$res/lint.log" 2>&1 ) && lint=OK
+  ( cd "$work" && sh -c "$TEST_CMD" >"$res/test.log" 2>&1 ) && test=OK
   jq -s --arg arm "$arm" --arg run "$run" --arg lint "$lint" --arg test "$test" '
     {arm: $arm, run: ($run|tonumber), lint: $lint, test: $test,
      prompts: length,

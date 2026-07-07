@@ -1,0 +1,15 @@
+# Charge de travail RealWorld (ts-redux-react-realworld-example-app) pour
+# scripts/benchmark-routing.sh — codebase réel non généré par le plugin, hooks
+# .claude/ du plugin greffés. Format : <catégorie attendue><TAB><prompt>.
+mecanique	Ajoute .DS_Store et coverage/ au .gitignore
+mecanique	Trouve le fichier qui définit le store Redux et donne-moi juste son chemin
+mecanique	Ajoute une section "## Tests" au README.md expliquant comment lancer la suite de tests puis commit
+mecanique	Renomme le fichier src/types/error.ts en genericErrors.ts et mets à jour les imports
+dev	Dans le composant Pagination, empêche le re-clic sur la page courante (lien désactivé), avec test unitaire
+dev	Ajoute le tri alphabétique des tags populaires sur la page Home, avec test unitaire
+dev	Ajoute une confirmation window.confirm avant la suppression d'un article, avec test unitaire
+dev	Ajoute un compteur de caractères (0/500) sous le champ de nouveau commentaire sur la page article, avec test unitaire
+dev	Ajoute un bouton "Copier le lien" sur la page article qui copie l'URL courante dans le presse-papier, avec test unitaire
+dev	Affiche le message "No articles are here... yet." quand une liste d'articles est vide dans ArticlesViewer, avec test unitaire
+archi	Recommandes-tu de migrer les appels API de ce projet vers RTK Query ? Analyse l'existant et documente la décision argumentée dans docs/adr-001-rtk-query.md sans l'implémenter
+archi	Analyse la gestion du token JWT (stockage, expiration, déconnexion) et documente les risques de sécurité et mitigations dans docs/security.md sans l'implémenter
