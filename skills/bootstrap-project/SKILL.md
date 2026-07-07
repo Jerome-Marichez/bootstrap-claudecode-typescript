@@ -11,15 +11,23 @@ ton rôle : recueillir les choix, l'exécuter, puis **personnaliser** le résult
 
 ## 1. Recueillir les choix (AskUserQuestion)
 
-Pose ces questions (regroupe-les en un ou deux appels AskUserQuestion) :
+Procède en **deux temps** : le layout conditionne les questions suivantes, donc ne
+pose jamais tout d'un coup.
+
+**Appel 1 — toujours :**
 
 1. **Nom du projet** (kebab-case) et **description courte** — si non fournis dans la
    demande initiale.
 2. **Type de projet (layout)** : `front-back` (deux apps : front React + back API
    Node/TS), `single` (une seule app — typiquement Next.js avec ses API routes) ou
    `package` (librairie npm TypeScript, sans e2e/système).
-3. **Framework front** (sauf package) : `Next.js` (recommandé — habitude de
-   l'utilisateur) ou `Vite + React`.
+
+**Appel 2 — adapté au layout choisi :**
+
+Pour `front-back` ou `single` :
+
+3. **Framework front** : `Next.js` (recommandé — habitude de l'utilisateur) ou
+   `Vite + React`.
 4. **CI** : `GitHub Actions` (workflows ci-dev-lint/tests + ci-main-e2e/system/build)
    ou `GitLab CI` (.gitlab-ci.yml équivalent) ou `aucune`.
 5. **Setup des tests dès le départ ?** oui (recommandé) → configs **Jest** + **Stryker**
@@ -31,12 +39,27 @@ Pose ces questions (regroupe-les en un ou deux appels AskUserQuestion) :
 7. **Storybook** : oui (recommandé si UI riche) / non.
 8. **Dossier cible** : par défaut `~/Desktop/<nom-du-projet>`.
 
+Pour `package` (librairie npm, agnostique de tout framework — **ne propose PAS**
+framework front, e2e/Cypress, Postman ni tests d'acceptation ; les questions
+doivent le refléter) :
+
+3. **CI** : `GitHub Actions` / `GitLab CI` / `aucune` — jobs lint + tests
+   unitaires/intégration + build uniquement (pas de e2e/système).
+4. **Setup des tests dès le départ ?** oui (recommandé) → configs **Jest** +
+   **Stryker** (unitaire/intégration) seulement / non (`--no-tests-setup`).
+5. **Storybook** : oui (recommandé si librairie de composants UI) / non
+   (recommandé pour une lib purement logique).
+6. **Dossier cible** : par défaut `~/Desktop/<nom-du-projet>`.
+
+Pour un `package`, ne passe pas `--framework` (ignoré, la lib est agnostique)
+ni `--acceptance`.
+
 ## 2. Exécuter le générateur
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/scripts/bootstrap.sh \
   --name <nom> --desc "<description>" \
-  --layout <front-back|single|package> --framework <nextjs|vite> \
+  --layout <front-back|single|package> [--framework <nextjs|vite>] \
   --ci <github|gitlab|none> [--no-storybook] [--no-tests-setup] [--acceptance] \
   --target <dossier>
 ```

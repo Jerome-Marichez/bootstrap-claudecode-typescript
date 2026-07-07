@@ -61,13 +61,19 @@ if [ -z "$OWNER" ]; then
   [ -z "$OWNER" ] && { echo "--owner requis : aucun compte gh connecté (gh auth login) ni git config user.name" >&2; exit 1; }
 fi
 case "$LAYOUT" in front-back|single|package) ;; *) echo "--layout doit être front-back, single ou package" >&2; exit 1 ;; esac
-case "$FRAMEWORK" in nextjs|vite) ;; *) echo "--framework doit être nextjs ou vite" >&2; exit 1 ;; esac
 case "$CI" in github|gitlab|none) ;; *) echo "--ci doit être github, gitlab ou none" >&2; exit 1 ;; esac
 
-case "$FRAMEWORK" in
-  nextjs) FRAMEWORK_LABEL="Next.js (App Router)" ;;
-  vite)   FRAMEWORK_LABEL="Vite + React" ;;
-esac
+if [ "$LAYOUT" = "package" ]; then
+  # Une librairie npm est agnostique : aucun framework front n'est imposé.
+  FRAMEWORK="none"
+  FRAMEWORK_LABEL="aucun (librairie TypeScript agnostique)"
+else
+  case "$FRAMEWORK" in nextjs|vite) ;; *) echo "--framework doit être nextjs ou vite" >&2; exit 1 ;; esac
+  case "$FRAMEWORK" in
+    nextjs) FRAMEWORK_LABEL="Next.js (App Router)" ;;
+    vite)   FRAMEWORK_LABEL="Vite + React" ;;
+  esac
+fi
 
 if [ -e "$TARGET" ] && [ -n "$(ls -A "$TARGET" 2>/dev/null)" ]; then
   echo "Refus : $TARGET existe et n'est pas vide." >&2
