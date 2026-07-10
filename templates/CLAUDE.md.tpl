@@ -204,7 +204,9 @@ un subagent adapté — voir [`docs/model-routing.md`](./docs/model-routing.md) 
 |----------|-----------------|--------|
 | `opus-architect` | Opus, effort xhigh | architecture, conception, migrations, sécurité, debugging profond |
 | `opus-dev` | Opus, effort medium | features, refactoring, bugfix non trivial, tests |
+<!-- >>only:front-back,single,storybook -->
 | `opus-frontend` | Opus, effort medium | composants React, vues, styles, responsive, a11y, Storybook (projets avec UI) |
+<!-- <<only -->
 | `haiku-mechanic` | Haiku | doc, renommages, formatage, git, recherches simples |
 
 Règles : **en cas de doute, router vers le haut** (jamais de perte de précision pour

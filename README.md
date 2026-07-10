@@ -10,9 +10,11 @@ vraies commandes — `make install && make lint && make test && make build` pass
 dès la génération.
 
 > ⚠️ **État de la CI** : les workflows **GitHub Actions** sont testés et
-> fonctionnels. Le `.gitlab-ci.yml` généré est un équivalent **non vérifié sur
-> une vraie instance GitLab** — en l'état il ne fonctionne pas tel quel selon
-> le runner (image, config git du runner…) et demande une adaptation manuelle.
+> fonctionnels. Le `.gitlab-ci.yml` généré est conçu pour fonctionner sur les
+> deux executors (docker et **shell** : release via l'API + `CI_JOB_TOKEN`,
+> aucune image dédiée requise) mais n'est validé que par le smoke test — sur un
+> runner shell, la machine doit avoir Node, make, curl et jq (voir l'en-tête du
+> fichier généré).
 
 **Prérequis du générateur** : bash, `jq`, `make` ; `gh` (auteur auto) et `curl`
 pour le hook dépendances ; Node ≥ 24 pour travailler dans le projet généré.
@@ -78,7 +80,7 @@ connecté à la CLI GitHub (`gh api user`), à défaut `git config user.name` ;
 | `shared/` (front-back) | Interfaces d'entités et schémas Zod **partagés entre front et back** (`shared/interfaces/`, `shared/schemas/`) — jamais de duplication |
 | Tests | `front/tests/{unitaire,integration,e2e}` + `back/tests/{unitaire,integration,systeme}` (front-back), `tests/{unitaire,integration,e2e,systeme}` (single) ou `tests/{unitaire,integration}` (package) — avec configs **Jest**, **Stryker** (mutation), **Cypress** (e2e), collection **Postman** (système API), un **test unitaire d'exemple qui passe** (chaîne Jest+ts-jest validée dès le bootstrap), et en option `tests/acceptance/` + UAT (disponibilité, sécurité, performance, robustesse) |
 | Lint | `biome.json` + `scripts/check-max-lines.sh` (300 lignes) + `make lint` |
-| CI | GitHub : `ci-dev-lint` (Biome + 300 lignes), `ci-dev-tests`, `ci-main-e2e`, `ci-main-system`, `ci-main-build`, `release-main` (tag `vX.Y.Z` + release SemVer automatiques à chaque push sur `main`) — ou GitLab : `.gitlab-ci.yml` équivalent (job `release` inclus), **non vérifié sur une vraie instance, adaptation manuelle à prévoir**. Les jobs exécutent les **vraies** cibles Make (aucun `echo TODO`) |
+| CI | GitHub : `ci-dev-lint` (Biome + 300 lignes), `ci-dev-tests`, `ci-main-e2e`, `ci-main-system`, `ci-main-build`, `release-main` (tag `vX.Y.Z` + release SemVer automatiques à chaque push sur `main`) — ou GitLab : `.gitlab-ci.yml` équivalent (job `release` via l'API GitLab + `CI_JOB_TOKEN` — compatible executors docker **et shell**, dépendances Cypress auto-installées en docker). Les jobs exécutent les **vraies** cibles Make (aucun `echo TODO`) |
 | `Makefile` | Interface unique aux **cibles réelles** : install, dev, build, lint, test-* (unit, int, e2e, system, mutation, acceptance), storybook, docker-* — adaptées au layout |
 | `.nvmrc` | Version Node unique — point de vérité `NODE_VERSION` dans `bootstrap.sh`, propagé aux workflows GitHub (`node-version-file`), à l'image GitLab et aux Dockerfiles |
 | Template d'issue | `.github/ISSUE_TEMPLATE/issue.md` ou `.gitlab/issue_templates/issue.md` — modèle **commun** (type bug/feature/documentation/autre, description, critères d'acceptation, impacts), imposé par le skill `/create-issue`, sans emoji |

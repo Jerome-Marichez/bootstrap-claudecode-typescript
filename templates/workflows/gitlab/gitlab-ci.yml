@@ -3,6 +3,12 @@
 #   MR -> dev  : lint (Biome + 300 lignes) + tests unitaires/intégration
 #   MR -> main : e2e + système + build
 #   push main  : tag vX.Y.Z + release SemVer (version lue dans {{VERSION_FILE}})
+#
+# Runners :
+#   - executor docker : fonctionne tel quel (image node ci-dessous) ;
+#   - executor shell  : `image:` est IGNORÉ — le runner doit avoir Node {{NODE_VERSION}},
+#     make, curl et jq installés. Ne JAMAIS faire `git config --global` dans un job
+#     (les runners shell accumulent les entrées dans ~/.gitconfig entre jobs).
 
 # Version Node alignée sur le .nvmrc du projet (point de vérité : bootstrap.sh).
 image: node:{{NODE_VERSION}}
@@ -19,7 +25,8 @@ lint:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"'
   script:
     - npx @biomejs/biome@{{BIOME_VERSION}} check .
-    - ./scripts/check-max-lines.sh
+    # bash explicite : ne dépend pas du bit exécutable du checkout.
+    - bash scripts/check-max-lines.sh
 
 tests:
   stage: test
@@ -34,6 +41,17 @@ e2e:
   stage: verify-main
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+  before_script:
+    # Cypress headless a besoin de xvfb/gtk/nss : absents de l'image node nue.
+    # Installés seulement si on est root avec apt (executor docker) ; sur un
+    # runner shell, les installer une fois sur la machine.
+    - |
+      if command -v apt-get >/dev/null 2>&1 && [ "$(id -u)" = "0" ]; then
+        apt-get update -qq
+        apt-get install -y -qq --no-install-recommends \
+          libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libnss3 \
+          libxss1 libasound2 libxtst6 xauth xvfb
+      fi
   script:
     - make install
     - make test-e2e
@@ -54,17 +72,32 @@ build:
     - make install
     - make build
 
-# Tag + release SemVer sur main. La version DOIT être bumpée dans le même
-# commit/MR que le changement (voir CLAUDE.md) : si le tag vX.Y.Z existe déjà,
-# le job s'arrête sans rien publier.
+# Tag + release SemVer sur main, via l'API GitLab (curl + CI_JOB_TOKEN) : aucune
+# dépendance à release-cli ni à une image dédiée — fonctionne aussi sur les
+# runners shell. La version DOIT être bumpée dans le même commit/MR que le
+# changement (voir CLAUDE.md) : si le tag vX.Y.Z existe déjà, le job s'arrête
+# sans rien publier.
 release:
   stage: release
-  image: registry.gitlab.com/gitlab-org/release-cli:latest
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
   script:
     - VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([0-9]*\.[0-9]*\.[0-9]*\)".*/\1/p' {{VERSION_FILE}} | head -1)
     - if [ -z "$VERSION" ]; then echo "Version SemVer introuvable dans {{VERSION_FILE}}"; exit 1; fi
     - TAG="v$VERSION"
-    - if git ls-remote --tags "$CI_REPOSITORY_URL" "refs/tags/$TAG" | grep -q .; then echo "Le tag $TAG existe déjà — rien à faire."; exit 0; fi
-    - release-cli create --name "$TAG" --tag-name "$TAG" --ref "$CI_COMMIT_SHA" --description "Release $TAG"
+    - |
+      STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/tags/$TAG")
+      if [ "$STATUS" = "200" ]; then
+        echo "Le tag $TAG existe déjà — rien à faire."
+        exit 0
+      fi
+      curl -fsS --request POST \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        --data-urlencode "name=$TAG" \
+        --data-urlencode "tag_name=$TAG" \
+        --data-urlencode "ref=$CI_COMMIT_SHA" \
+        --data-urlencode "description=Release $TAG" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases"
+      echo "Release $TAG créée."
