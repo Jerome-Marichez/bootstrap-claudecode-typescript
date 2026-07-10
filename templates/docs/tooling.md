@@ -8,6 +8,10 @@ Toutes les opérations passent par `make` (voir `Makefile`) : agnostique, docume
 ## Lint — Biome + limite 300 lignes
 
 - **Biome** (`biome.json` à la racine) : lint + format TypeScript/React.
+  Règles notables : `noExplicitAny` et **`noConsole`** en `error`. Pas de
+  `console.*` dans le code applicatif — passer par le **service de log** du projet
+  (voir [`frontend-practices.md`](./frontend-practices.md)) ; l'`override` de
+  `biome.json` lève la règle pour les fichiers de log, config et scripts.
 - **`scripts/check-max-lines.sh`** : échoue si un fichier source (`.ts`, `.tsx`,
   `.js`, `.jsx`) dépasse **300 lignes**. Exécuté par `make lint`, par la CI et par
   un hook Claude Code. Remède : extraire (sous-composants, hooks, services) —

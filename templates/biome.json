@@ -14,7 +14,7 @@
     "rules": {
       "recommended": true,
       "a11y": { "recommended": true },
-      "suspicious": { "noExplicitAny": "error" }
+      "suspicious": { "noExplicitAny": "error", "noConsole": "error" }
     }
   },
   "javascript": {
@@ -30,5 +30,11 @@
       "!coverage",
       "!**/postman_collection.json"
     ]
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*ogger*.ts", "**/services/log*.ts", "**/*.config.*", "**/scripts/**"],
+      "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
+    }
+  ]
 }

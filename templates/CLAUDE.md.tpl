@@ -175,6 +175,7 @@ indisponible) est **refusé**.
   [tooling](./docs/tooling.md), [model-routing](./docs/model-routing.md),
   [security](./docs/security.md),
   [accessibility](./docs/accessibility.md), [design](./docs/design.md),
+  [frontend-practices](./docs/frontend-practices.md),
 <!-- >>only:docker -->
   [docker](./docs/docker.md),
 <!-- <<only -->

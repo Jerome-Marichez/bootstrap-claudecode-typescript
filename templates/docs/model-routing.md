@@ -18,7 +18,7 @@ heuristique instantanée + subagents pré-définis + escalade.
 |----------|--------|--------|--------|
 | `opus-architect` | opus | xhigh | architecture, conception, migrations, sécurité, auth, paiement, concurrence, debugging profond, questions ouvertes (« pourquoi », « comment devrait-on ») |
 | `opus-dev` | opus | medium | features, refactoring ciblé, bugfix non trivial, tests — **et toute la zone grise** |
-| `opus-frontend` | opus | medium | composants React, pages/vues, styles, responsive, accessibilité, Storybook, formulaires, animations (absent des projets `package` sans Storybook) |
+| `opus-frontend` | opus | medium | composants React, pages/vues, styles, responsive, accessibilité, Storybook, formulaires, **tableaux de données**, **dataviz/graphes**, **upload/import de fichiers**, animations (absent des projets `package` sans Storybook) |
 | `haiku-mechanic` | haiku | — | doc, renommages, formatage, commits, recherches de fichiers |
 
 3. Le modèle principal **peut outrepasser** la recommandation (il voit tout le
@@ -32,10 +32,11 @@ heuristique instantanée + subagents pré-définis + escalade.
   jamais à `haiku-mechanic`. (Asymétrie clé de la littérature routing : biaiser le
   seuil vers le modèle fort coûte peu en tokens, l'inverse coûte cher en qualité.)
 - **Routage frontend conditionnel.** Les signaux UI (composant, css, responsive,
-  accessibilité, storybook…) routent vers `opus-frontend` **seulement si l'agent
-  existe** dans `.claude/agents/` — sinon repli naturel sur `opus-dev`. Les signaux
-  de risque (UP) restent prioritaires : « sécurise le formulaire de paiement » va
-  à l'architecte, pas au frontend.
+  accessibilité, storybook, formulaires, tableaux de données, dataviz/graphes,
+  upload/import…) routent vers `opus-frontend` **seulement si l'agent existe** dans
+  `.claude/agents/` — sinon repli naturel sur `opus-dev`. Les signaux de risque (UP)
+  restent prioritaires : « sécurise le formulaire de paiement » va à l'architecte,
+  pas au frontend.
 - **Escalade (cascade).** Les prompts de `opus-dev`, `opus-frontend` et `haiku-mechanic` imposent
   de répondre `ESCALATE: <raison>` si la tâche les dépasse ; le modèle principal
   re-délègue alors un niveau au-dessus. Une décision de routage n'est donc jamais
