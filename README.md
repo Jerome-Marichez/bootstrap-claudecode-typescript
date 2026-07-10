@@ -9,6 +9,11 @@ lignes / fichier**) et workflows CI (GitHub Actions ou GitLab CI) qui exécutent
 vraies commandes — `make install && make lint && make test && make build` passent
 dès la génération.
 
+> ⚠️ **État de la CI** : les workflows **GitHub Actions** sont testés et
+> fonctionnels. Le `.gitlab-ci.yml` généré est un équivalent **non vérifié sur
+> une vraie instance GitLab** — en l'état il ne fonctionne pas tel quel selon
+> le runner (image, config git du runner…) et demande une adaptation manuelle.
+
 **Prérequis du générateur** : bash, `jq`, `make` ; `gh` (auteur auto) et `curl`
 pour le hook dépendances ; Node ≥ 24 pour travailler dans le projet généré.
 
@@ -49,7 +54,7 @@ exécute le générateur et personnalise les fichiers.
   --framework nextjs \         # ou : vite
   --ci github \                # ou : gitlab | none
   --target ~/Desktop/mon-projet
-  # options : --no-storybook --no-tests-setup --acceptance --no-git
+  # options : --no-storybook --no-tests-setup --acceptance --postman --no-git
 ```
 
 L'auteur est **toujours le compte lié à la forge** : le générateur prend le compte
@@ -73,7 +78,7 @@ connecté à la CLI GitHub (`gh api user`), à défaut `git config user.name` ;
 | `shared/` (front-back) | Interfaces d'entités et schémas Zod **partagés entre front et back** (`shared/interfaces/`, `shared/schemas/`) — jamais de duplication |
 | Tests | `front/tests/{unitaire,integration,e2e}` + `back/tests/{unitaire,integration,systeme}` (front-back), `tests/{unitaire,integration,e2e,systeme}` (single) ou `tests/{unitaire,integration}` (package) — avec configs **Jest**, **Stryker** (mutation), **Cypress** (e2e), collection **Postman** (système API), un **test unitaire d'exemple qui passe** (chaîne Jest+ts-jest validée dès le bootstrap), et en option `tests/acceptance/` + UAT (disponibilité, sécurité, performance, robustesse) |
 | Lint | `biome.json` + `scripts/check-max-lines.sh` (300 lignes) + `make lint` |
-| CI | GitHub : `ci-dev-lint` (Biome + 300 lignes), `ci-dev-tests`, `ci-main-e2e`, `ci-main-system`, `ci-main-build`, `release-main` (tag `vX.Y.Z` + release SemVer automatiques à chaque push sur `main`) — ou GitLab : `.gitlab-ci.yml` équivalent (job `release` inclus). Les jobs exécutent les **vraies** cibles Make (aucun `echo TODO` : une CI verte veut dire que install/tests/build sont réellement passés) |
+| CI | GitHub : `ci-dev-lint` (Biome + 300 lignes), `ci-dev-tests`, `ci-main-e2e`, `ci-main-system`, `ci-main-build`, `release-main` (tag `vX.Y.Z` + release SemVer automatiques à chaque push sur `main`) — ou GitLab : `.gitlab-ci.yml` équivalent (job `release` inclus), **non vérifié sur une vraie instance, adaptation manuelle à prévoir**. Les jobs exécutent les **vraies** cibles Make (aucun `echo TODO`) |
 | `Makefile` | Interface unique aux **cibles réelles** : install, dev, build, lint, test-* (unit, int, e2e, system, mutation, acceptance), storybook, docker-* — adaptées au layout |
 | `.nvmrc` | Version Node unique — point de vérité `NODE_VERSION` dans `bootstrap.sh`, propagé aux workflows GitHub (`node-version-file`), à l'image GitLab et aux Dockerfiles |
 | Template d'issue | `.github/ISSUE_TEMPLATE/issue.md` ou `.gitlab/issue_templates/issue.md` — modèle **commun** (type bug/feature/documentation/autre, description, critères d'acceptation, impacts), imposé par le skill `/create-issue`, sans emoji |
@@ -118,7 +123,7 @@ davantage en exploration et produirait un résultat encore moins conforme.
 
 | Hook | Événement | Rôle |
 |------|-----------|------|
-| `route-task.sh` | UserPromptSubmit | **Routage de modèles** : classifie la demande (architecture / développement / mécanique) et recommande le subagent adapté — voir section suivante. Absorbe aussi le **budget crédits** : usage lu via `ccusage` avec **cache 10 min** (`CREDITS_LIMIT_TOKENS` requis) ; > 50 % consommés et reset < 2 h → recommandation plafonnée à opus-dev (effort medium) ; < 50 % et reset < 1 h → message « marge disponible ». |
+| `route-task.sh` | UserPromptSubmit | **Routage de modèles** : classifie la demande (architecture / frontend / développement / mécanique) et recommande le subagent adapté — voir section suivante. Absorbe aussi le **budget crédits** : usage lu via `ccusage` avec **cache 10 min** (`CREDITS_LIMIT_TOKENS` requis) ; > 50 % consommés et reset < 2 h → recommandation plafonnée à opus-dev (effort medium) ; < 50 % et reset < 1 h → message « marge disponible ». |
 | `check-test-location.sh` | PreToolUse (Write) | Bloque la création d'un fichier de test (`*.spec.*`, `*.test.*`, `*.cy.ts` — ts/tsx/js/jsx) hors de la convention `docs/testing.md`. |
 | `check-new-dependency.sh` | PreToolUse (Bash/Write/Edit/MultiEdit) | Nouvelle dépendance acceptée si **≥ 3 contributeurs ET publication < 6 mois**, OU **éditeur de confiance** (Meta, Google, Vercel, zod, jest… extensible via `TRUSTED_ORGS_EXTRA`) avec **≥ 1000 étoiles** ; version **SemVer** obligatoire (refus si non conforme ou indisponible). Publication > 6 mois hors éditeur de confiance → **confirmation manuelle** (paquet mature vs abandonné), plus de refus sec. |
 | `check-file-length.sh` | PostToolUse (Write/Edit) | Alerte dès qu'un fichier source dépasse 300 lignes. |
@@ -136,6 +141,7 @@ Chaque projet généré embarque un routage **sans perte de précision** (doc co
 |----------|-----------------|--------|
 | `opus-architect` | opus / xhigh | architecture, conception, migrations, sécurité, auth, paiement, concurrence, debugging profond |
 | `opus-dev` | opus / medium | features, refactoring, bugfix non trivial, tests — **et toute la zone grise** |
+| `opus-frontend` | opus / medium | composants React, vues, styles, responsive, a11y, Storybook — installé seulement si le projet a une UI (skippé en layout package sans Storybook), repli sur `opus-dev` sinon |
 | `haiku-mechanic` | haiku | doc, renommages, formatage, commits, recherches |
 
 Garde-fous : **défaut vers le haut** (zone grise → opus-dev (medium), jamais haiku) ; **escalade**
@@ -216,6 +222,17 @@ Les templates portent aussi des **blocs conditionnels** : une ligne contenant
 `system`, `postman`, `acceptance`, `tests-setup`, `ci-github`/`ci-gitlab`) ; une
 ligne contenant `<<only` le ferme (pas d'imbrication). Modifier un template ici
 met à jour tous les futurs projets.
+
+## Benchmark du routage de modèles
+
+`./scripts/benchmark-routing.sh` mesure l'apport du routage sur une charge de
+travail fixe (`scripts/benchmark-prompts.txt`, ou `benchmark-prompts-realworld.txt`
+pour un codebase réel type RealWorld via `--install-cmd`/`--lint-cmd`/`--test-cmd`) :
+deux bras (`routing` = hooks actifs vs `no-routing` = tout sur Opus via `!!`),
+chaque prompt en session `claude -p` headless, usage API réel lu dans le JSON de
+sortie, et garde-fou qualité après chaque bras (lint + tests unitaires — une
+économie qui casse les tests ne vaut rien). Nécessite `claude`, `jq`, `rsync`,
+`make`, `npm` ; coût : appels API réels.
 
 ## Développement du plugin
 
