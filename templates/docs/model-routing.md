@@ -10,7 +10,7 @@ heuristique instantanée + subagents pré-définis + escalade.
 1. **`.claude/hooks/route-task.sh`** (UserPromptSubmit) classifie le prompt
    (regex FR/EN + longueur, zéro appel réseau, zéro latence) et **injecte une
    recommandation** de subagent dans le contexte.
-2. **`.claude/agents/`** définit trois subagents — le modèle **et** le niveau
+2. **`.claude/agents/`** définit les subagents — le modèle **et** le niveau
    d'effort sont portés par leur frontmatter (`model:`, `effort:`), mécanisme
    natif de Claude Code :
 
@@ -18,6 +18,7 @@ heuristique instantanée + subagents pré-définis + escalade.
 |----------|--------|--------|--------|
 | `opus-architect` | opus | xhigh | architecture, conception, migrations, sécurité, auth, paiement, concurrence, debugging profond, questions ouvertes (« pourquoi », « comment devrait-on ») |
 | `opus-dev` | opus | medium | features, refactoring ciblé, bugfix non trivial, tests — **et toute la zone grise** |
+| `opus-frontend` | opus | medium | composants React, pages/vues, styles, responsive, accessibilité, Storybook, formulaires, animations (absent des projets `package` sans Storybook) |
 | `haiku-mechanic` | haiku | — | doc, renommages, formatage, commits, recherches de fichiers |
 
 3. Le modèle principal **peut outrepasser** la recommandation (il voit tout le
@@ -30,7 +31,12 @@ heuristique instantanée + subagents pré-définis + escalade.
   (tâche mécanique, courte, sans signal métier). La zone grise va à `opus-dev`,
   jamais à `haiku-mechanic`. (Asymétrie clé de la littérature routing : biaiser le
   seuil vers le modèle fort coûte peu en tokens, l'inverse coûte cher en qualité.)
-- **Escalade (cascade).** Les prompts de `opus-dev` et `haiku-mechanic` imposent
+- **Routage frontend conditionnel.** Les signaux UI (composant, css, responsive,
+  accessibilité, storybook…) routent vers `opus-frontend` **seulement si l'agent
+  existe** dans `.claude/agents/` — sinon repli naturel sur `opus-dev`. Les signaux
+  de risque (UP) restent prioritaires : « sécurise le formulaire de paiement » va
+  à l'architecte, pas au frontend.
+- **Escalade (cascade).** Les prompts de `opus-dev`, `opus-frontend` et `haiku-mechanic` imposent
   de répondre `ESCALATE: <raison>` si la tâche les dépasse ; le modèle principal
   re-délègue alors un niveau au-dessus. Une décision de routage n'est donc jamais
   définitive.

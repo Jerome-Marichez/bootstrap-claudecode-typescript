@@ -66,7 +66,7 @@ connecté à la CLI GitHub (`gh api user`), à défaut `git config user.name` ;
 | `package.json` + `tsconfig.json` | **Câblés et fonctionnels** par layout/framework : Next.js ou Vite + React, Zod, Jest + ts-jest, Biome, Stryker, Cypress ; back node:http minimal (front-back) ; tsup + exports ESM/CJS (package) |
 | Docker | `Dockerfile` multi-stage (`node:24-alpine`) par app + `docker-compose.yml` + `.env.example` — sauf layout package |
 | `.claude/hooks/` | `route-task.sh` (routage de modèles + budget crédits), `check-test-location.sh`, `check-file-length.sh` (300 lignes), `check-new-dependency.sh`, `remind-docs.sh`, `remind-tests.sh` |
-| `.claude/agents/` | `opus-architect` (opus, xhigh), `opus-dev` (opus, medium), `haiku-mechanic` (haiku) — cibles du routage de modèles |
+| `.claude/agents/` | `opus-architect` (opus, xhigh), `opus-dev` (opus, medium), `opus-frontend` (opus, medium, si UI), `haiku-mechanic` (haiku) — cibles du routage de modèles |
 | `.claude/settings.json` | Câblage des hooks UserPromptSubmit / PreToolUse / PostToolUse |
 | `.claude/skills/` | `/create-issue` (template d'issue commun obligatoire, sans emoji), `/create-feat` (issue → branche dev → worktree → subagent → PR), `/merge-prod` (PR dev→main, CI vérifiée, merge humain), exemple |
 | Structure `src/` | `interfaces/` (entités `IXxx` + `types.ts`), `schemas/` (validation **Zod**), `services/` (métier), `utils/`, `components/`, `views/`, `hooks/` |

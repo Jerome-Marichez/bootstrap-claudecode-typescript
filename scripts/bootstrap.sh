@@ -163,6 +163,11 @@ for f in "$TPL"/hooks/*.sh; do
   chmod +x "$TARGET/.claude/hooks/$(basename "$f")"
 done
 for f in "$TPL"/agents/*.md; do
+  # opus-frontend : seulement si le projet a une UI (pas pour une lib pure,
+  # sauf librairie de composants signalée par Storybook).
+  if [ "$(basename "$f")" = "opus-frontend.md" ] && [ "$LAYOUT" = "package" ] && [ "$STORYBOOK" = 0 ]; then
+    continue
+  fi
   render "$f" "$TARGET/.claude/agents/$(basename "$f")"
 done
 render "$TPL/claude-settings.json" "$TARGET/.claude/settings.json"

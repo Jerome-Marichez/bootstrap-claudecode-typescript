@@ -1,3 +1,6 @@
 {
-  "includeCoAuthoredBy": false
+  "includeCoAuthoredBy": false,
+  "enabledPlugins": {
+    "bootstrap-claudecode-typescript@bootstrap-claudecode-typescript": true
+  }
 }

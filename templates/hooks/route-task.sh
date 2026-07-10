@@ -2,7 +2,7 @@
 # Hook UserPromptSubmit — routage de modèles ({{PROJECT_NAME}})
 # Classifie la demande (architecture / développement / mécanique) par heuristique
 # FR/EN et RECOMMANDE le subagent adapté (.claude/agents/ : opus-architect,
-# opus-dev, haiku-mechanic). Conception et garde-fous : docs/model-routing.md.
+# opus-dev, opus-frontend s'il existe, haiku-mechanic). Conception et garde-fous : docs/model-routing.md.
 #
 # Garde-fous anti-perte de précision :
 #   - défaut = vers le haut : zone grise → opus-dev, jamais haiku ;
@@ -35,6 +35,7 @@ words=$(printf '%s' "$prompt" | wc -w | tr -d ' ')
 UP_RE='architectur|conception|concevoir|conçoi|redesign|refonte|migrat|scalab|montée en charge|s[ée]curit|security|auth|paiement|payment|billing|concurren|race condition|deadlock|chiffr|crypto|trade-?off|stratégi|strategy|schéma de (base|données)|data model|modèle de données|pourquoi|\bwhy\b|comment devrait|how should|repense|rethink|restructur'
 DOWN_RE='typo|coquille|renomm|rename|formate|reformat|indent|docstring|commentaire|readme|changelog|\bcommit\b|\bgit (status|log|push|pull|add)\b|gitignore|\bbump\b|déplace le fichier|move the file|supprime le fichier|delete the file|trouve le fichier|find the file|où (est|se trouve)|where is'
 MID_RE='impl[ée]ment|ajoute|\badd\b|cr[ée]e|corrige|\bfix\b|r[ée]pare|\bbug\b|teste|\btest\b|refactor|am[ée]liore|improve|optimis|mets? à jour|\bupdate\b|endpoint|composant|component|branche'
+FRONT_RE='composant|component|\bcss\b|tailwind|\bstyle\b|stylis|responsive|accessib|a11y|aria\b|storybook|\bstory\b|animation|maquette|mockup|\bui\b|\bux\b|écran|screen|\bpage\b|\bvue\b|\bview\b|formulaire|\bform\b|bouton|button|modal|navbar|footer|header|layout|thème|theme|dark mode|police|font|ic[oô]ne|icon'
 
 # Priorité : signaux UP (risque/architecture), puis longueur, puis signaux
 # mécaniques nets sur prompt court (avant MID : « corrige la typo » contient un
@@ -45,6 +46,9 @@ elif [ "$words" -gt 150 ]; then
   class="architecture (demande longue / ouverte)" agent="opus-architect"
 elif printf '%s' "$prompt" | grep -Eiq "$DOWN_RE" && [ "$words" -lt 25 ]; then
   class="mécanique" agent="haiku-mechanic"
+elif printf '%s' "$prompt" | grep -Eiq "$FRONT_RE" \
+  && [ -f "${CLAUDE_PROJECT_DIR:-.}/.claude/agents/opus-frontend.md" ]; then
+  class="frontend" agent="opus-frontend"
 elif printf '%s' "$prompt" | grep -Eiq "$MID_RE"; then
   class="développement" agent="opus-dev"
 elif [ "$words" -lt 8 ]; then
@@ -91,7 +95,7 @@ if [ -d "$(dirname "$log")" ]; then
 fi
 
 # --- Injection -------------------------------------------------------------------
-ctx="ROUTAGE MODÈLE — demande classée « ${class} ». Recommandation : délègue l'exécution au subagent « ${agent} » (défini dans .claude/agents/, modèle et effort adaptés). Heuristique basée sur le prompt seul : si le contexte de la session indique une complexité différente, choisis le subagent adapté — dans le doute, un cran AU-DESSUS, jamais en dessous. Si le subagent termine par « ESCALATE: <raison> », re-délègue la tâche un niveau au-dessus (haiku-mechanic → opus-dev → opus-architect) avec la raison. L'utilisateur peut bypasser ce routage en préfixant son prompt par « !! ».${budget_note}"
+ctx="ROUTAGE MODÈLE — demande classée « ${class} ». Recommandation : délègue l'exécution au subagent « ${agent} » (défini dans .claude/agents/, modèle et effort adaptés). Heuristique basée sur le prompt seul : si le contexte de la session indique une complexité différente, choisis le subagent adapté — dans le doute, un cran AU-DESSUS, jamais en dessous. Si le subagent termine par « ESCALATE: <raison> », re-délègue la tâche un niveau au-dessus (haiku-mechanic → opus-dev → opus-architect ; opus-frontend → opus-architect) avec la raison. L'utilisateur peut bypasser ce routage en préfixant son prompt par « !! ».${budget_note}"
 
 if [ -n "$boost_msg" ]; then
   jq -n --arg ctx "$ctx" --arg msg "$boost_msg" \

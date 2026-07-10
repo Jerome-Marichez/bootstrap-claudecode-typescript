@@ -74,7 +74,7 @@ le générateur prend le compte connecté à la CLI GitHub (`gh api user`), à d
 Le générateur crée un projet **immédiatement fonctionnel** : README.md, CLAUDE.md,
 docs/ (14 docs, adaptées au layout), .claude/ (hooks : routage de modèles
 `route-task.sh`, emplacement des tests, 300 lignes, dépendances, rappels doc/tests ;
-settings.json ; subagents `opus-architect`/`opus-dev`/`haiku-mechanic` ; skills
+settings.json ; subagents `opus-architect`/`opus-dev`/`opus-frontend` (si UI)/`haiku-mechanic` ; skills
 `/create-issue`, `/create-feat`, `/merge-prod`), **package.json + tsconfig.json
 câblés** (Zod, Jest, Biome ; Next.js ou Vite réellement installés selon le
 framework ; serveur back node:http minimal en front-back ; tsup en package),
@@ -106,7 +106,8 @@ connu grâce à la conversation :
 - [ ] `make install && make lint && make test` passent dans `<target>`.
 - [ ] `bash <target>/scripts/check-max-lines.sh <target>` passe.
 - [ ] Les hooks sont exécutables (`ls -l <target>/.claude/hooks/`) et les subagents
-      présents (`ls <target>/.claude/agents/` : opus-architect, opus-dev, haiku-mechanic).
+      présents (`ls <target>/.claude/agents/` : opus-architect, opus-dev, haiku-mechanic,
+      plus opus-frontend si le projet a une UI).
 - [ ] `git -C <target> log --oneline` montre le commit de bootstrap, branches `main` + `dev`.
 - [ ] Résumer à l'utilisateur : structure créée, choix retenus, prochaines étapes
       (protections de branches sur GitHub/GitLab, premier `/create-feat`).
