@@ -94,7 +94,11 @@ log="${CLAUDE_PROJECT_DIR:-.}/.claude/route-task.log"
 if [ -d "$(dirname "$log")" ]; then
   log_max="${LOG_MAX_LINES:-2000}"
   if [ -f "$log" ] && [ "$(wc -l < "$log" 2>/dev/null || echo 0)" -gt "$log_max" ] 2>/dev/null; then
-    tail -n "$(( log_max / 2 ))" "$log" > "$log.tmp" 2>/dev/null && mv "$log.tmp" "$log" || rm -f "$log.tmp"
+    if tail -n "$(( log_max / 2 ))" "$log" > "$log.tmp" 2>/dev/null; then
+      mv "$log.tmp" "$log" 2>/dev/null || rm -f "$log.tmp"
+    else
+      rm -f "$log.tmp"
+    fi
   fi
   jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg c "$class" --arg a "$agent" \
     --arg w "$words" '{ts:$ts, class:$c, agent:$a, words:($w|tonumber)}' >> "$log" 2>/dev/null

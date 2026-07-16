@@ -19,7 +19,8 @@
 #   (tests/acceptance/ + uat/{disponibilite,securite,performance,robustesse}).
 #
 # Tokens substitués : {{PROJECT_NAME}} {{PROJECT_DESC}} {{OWNER}} {{FRAMEWORK}}
-#                     {{NODE_VERSION}} {{BIOME_VERSION}}
+#                     {{NODE_VERSION}} {{BIOME_VERSION}} {{BIOME_SCHEMA_VERSION}}
+#                     {{VERSION_FILE}}
 #
 # Blocs conditionnels dans les templates : une ligne contenant «>>only:tag1,tag2»
 # ouvre un bloc conservé seulement si l'un des tags est actif (layout, framework,
@@ -38,66 +39,19 @@ BIOME_VERSION="^2.0.0"
 # BIOME_VERSION ci-dessus (le smoke test vérifie la cohérence des majeurs).
 BIOME_SCHEMA_VERSION="2.5.2"
 
-NAME=""
-DESC=""
-OWNER=""   # défaut : compte connecté à la CLI GitHub (gh api user), sinon git config user.name
-LAYOUT="front-back"
-FRAMEWORK="nextjs"
-CI="github"
-TARGET=""
-STORYBOOK=1
-TESTS_SETUP=1
-ACCEPTANCE=0
-POSTMAN=0   # package uniquement : force les tests système API (Postman)
-DO_GIT=1
+# Options CLI et moteur de rendu — extraits pour tenir la règle des 300 lignes
+# que ce dépôt impose aux projets qu'il génère. BASH_SOURCE plutôt que $0 :
+# le skill invoque le script par chemin absolu via ${CLAUDE_PLUGIN_ROOT}.
+LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)"
+# shellcheck source=scripts/lib/args.sh
+. "$LIB/args.sh"
+# shellcheck source=scripts/lib/render.sh
+. "$LIB/render.sh"
+# shellcheck source=scripts/lib/tests.sh
+. "$LIB/tests.sh"
 
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --name)   NAME="$2"; shift 2 ;;
-    --desc)   DESC="$2"; shift 2 ;;
-    --owner)  OWNER="$2"; shift 2 ;;
-    --layout) LAYOUT="$2"; shift 2 ;;
-    --framework) FRAMEWORK="$2"; shift 2 ;;
-    --ci)     CI="$2"; shift 2 ;;
-    --target) TARGET="$2"; shift 2 ;;
-    --no-storybook) STORYBOOK=0; shift ;;
-    --no-tests-setup) TESTS_SETUP=0; shift ;;
-    --acceptance) ACCEPTANCE=1; shift ;;
-    --postman) POSTMAN=1; shift ;;
-    --no-git) DO_GIT=0; shift ;;
-    -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *) echo "Option inconnue : $1" >&2; exit 1 ;;
-  esac
-done
-
-[ -n "$NAME" ]   || { echo "--name est obligatoire" >&2; exit 1; }
-case "$NAME" in *[!a-z0-9-]*) echo "--name doit être en kebab-case (a-z, 0-9, tirets)" >&2; exit 1 ;; esac
-[ -n "$TARGET" ] || { echo "--target est obligatoire" >&2; exit 1; }
-[ -n "$DESC" ]   || DESC="Projet $NAME"
-# Les tokens sont substitués par un s/// de sed, qui ne survit pas à un retour à
-# la ligne dans le remplacement : on les aplatit en espaces.
-DESC=$(printf '%s' "$DESC" | tr '\n' ' ')
-if [ -z "$OWNER" ]; then
-  # L'auteur est TOUJOURS le compte lié à la forge : celui connecté à la CLI gh.
-  OWNER=$(gh api user --jq '.name // .login' 2>/dev/null || true)
-  [ -z "$OWNER" ] && OWNER=$(git config user.name 2>/dev/null || true)
-  [ -z "$OWNER" ] && { echo "--owner requis : aucun compte gh connecté (gh auth login) ni git config user.name" >&2; exit 1; }
-fi
-OWNER=$(printf '%s' "$OWNER" | tr '\n' ' ')
-case "$LAYOUT" in front-back|single|package) ;; *) echo "--layout doit être front-back, single ou package" >&2; exit 1 ;; esac
-case "$CI" in github|gitlab|none) ;; *) echo "--ci doit être github, gitlab ou none" >&2; exit 1 ;; esac
-
-if [ "$LAYOUT" = "package" ]; then
-  # Une librairie npm est agnostique : aucun framework front n'est imposé.
-  FRAMEWORK="none"
-  FRAMEWORK_LABEL="aucun (librairie TypeScript agnostique)"
-else
-  case "$FRAMEWORK" in nextjs|vite) ;; *) echo "--framework doit être nextjs ou vite" >&2; exit 1 ;; esac
-  case "$FRAMEWORK" in
-    nextjs) FRAMEWORK_LABEL="Next.js (App Router)" ;;
-    vite)   FRAMEWORK_LABEL="Vite + React" ;;
-  esac
-fi
+parse_args "$@"
+validate_args
 
 if [ -e "$TARGET" ] && [ -n "$(ls -A "$TARGET" 2>/dev/null)" ]; then
   echo "Refus : $TARGET existe et n'est pas vide." >&2
@@ -133,35 +87,6 @@ if [ "$TESTS_SETUP" = 1 ]; then KEYS="$KEYS tests-setup"; fi
 # Fichier point de vérité de la version SemVer (workflow de release sur main).
 if [ "$LAYOUT" = "front-back" ]; then VERSION_FILE="front/package.json"; else VERSION_FILE="package.json"; fi
 
-# Échappe une valeur pour le remplacement d'un s/// de sed.
-# Les retours à la ligne sont aplatis en amont (cf. validation de DESC).
-esc() { printf '%s' "$1" | sed 's/[&/\]/\\&/g'; }
-
-# Copie un template en substituant les tokens puis en filtrant les blocs only.
-render() { # render <src> <dst>
-  mkdir -p "$(dirname "$2")"
-  sed -e "s/{{PROJECT_NAME}}/$(esc "$NAME")/g" \
-      -e "s/{{PROJECT_DESC}}/$(esc "$DESC")/g" \
-      -e "s/{{OWNER}}/$(esc "$OWNER")/g" \
-      -e "s/{{FRAMEWORK}}/$(esc "$FRAMEWORK_LABEL")/g" \
-      -e "s/{{NODE_VERSION}}/$(esc "$NODE_VERSION")/g" \
-      -e "s/{{BIOME_VERSION}}/$(esc "$BIOME_VERSION")/g" \
-      -e "s/{{BIOME_SCHEMA_VERSION}}/$(esc "$BIOME_SCHEMA_VERSION")/g" \
-      -e "s|{{VERSION_FILE}}|$VERSION_FILE|g" \
-      "$1" \
-  | awk -v keys=" $KEYS " '
-      index($0, ">>only:") {
-        tags = $0
-        sub(/.*>>only:/, "", tags); sub(/[^a-z0-9,-].*/, "", tags)
-        keep = 0
-        n = split(tags, a, ",")
-        for (i = 1; i <= n; i++) if (index(keys, " " a[i] " ")) keep = 1
-        skip = !keep; next
-      }
-      index($0, "<<only") { skip = 0; next }
-      !skip
-    ' > "$2"
-}
 
 echo "→ Documentation (README.md, CLAUDE.md, docs/)"
 render "$TPL/README.md.tpl"  "$TARGET/README.md"
@@ -282,72 +207,8 @@ if [ "$LAYOUT" != "package" ]; then
   fi
 fi
 
-echo "→ Structure de tests (layout : $LAYOUT)"
-if [ "$LAYOUT" = "front-back" ]; then
-  mkdir -p "$TARGET/front/tests/unitaire" "$TARGET/front/tests/integration" "$TARGET/front/tests/e2e" \
-           "$TARGET/back/tests/unitaire"  "$TARGET/back/tests/integration"  "$TARGET/back/tests/systeme"
-  for d in front/tests/unitaire front/tests/integration front/tests/e2e \
-           back/tests/unitaire back/tests/integration back/tests/systeme; do
-    touch "$TARGET/$d/.gitkeep"
-  done
-elif [ "$LAYOUT" = "package" ]; then
-  mkdir -p "$TARGET/src" "$TARGET/tests/unitaire" "$TARGET/tests/integration"
-  for d in tests/unitaire tests/integration; do
-    touch "$TARGET/$d/.gitkeep"
-  done
-  if [ "$POSTMAN" = 1 ]; then
-    mkdir -p "$TARGET/tests/systeme"
-    touch "$TARGET/tests/systeme/.gitkeep"
-  fi
-else
-  mkdir -p "$TARGET/src" "$TARGET/tests/unitaire" "$TARGET/tests/integration" \
-           "$TARGET/tests/e2e" "$TARGET/tests/systeme"
-  for d in tests/unitaire tests/integration tests/e2e tests/systeme; do
-    touch "$TARGET/$d/.gitkeep"
-  done
-fi
+gen_tests
 
-if [ "$TESTS_SETUP" = 1 ]; then
-  echo "→ Outillage de tests (Jest + Stryker, Cypress)"
-  if [ "$LAYOUT" = "front-back" ]; then
-    render "$TPL/tests-setup/jest.config.mjs"     "$TARGET/front/jest.config.mjs"
-    render "$TPL/tests-setup/stryker.config.json" "$TARGET/front/stryker.config.json"
-    render "$TPL/tests-setup/cypress.config.ts"   "$TARGET/front/cypress.config.ts"
-    render "$TPL/tests-setup/jest.config.mjs"     "$TARGET/back/jest.config.mjs"
-    render "$TPL/tests-setup/stryker.config.json" "$TARGET/back/stryker.config.json"
-  elif [ "$LAYOUT" = "package" ]; then
-    render "$TPL/tests-setup/jest.config.mjs"     "$TARGET/jest.config.mjs"
-    render "$TPL/tests-setup/stryker.config.json" "$TARGET/stryker.config.json"
-  else
-    render "$TPL/tests-setup/jest.config.mjs"     "$TARGET/jest.config.mjs"
-    render "$TPL/tests-setup/stryker.config.json" "$TARGET/stryker.config.json"
-    render "$TPL/tests-setup/cypress.config.ts"   "$TARGET/cypress.config.ts"
-  fi
-  # Test unitaire d'exemple : valide la chaîne Jest + ts-jest + tsconfig dès le bootstrap.
-  if [ "$LAYOUT" = "front-back" ]; then
-    render "$TPL/tests-setup/exemple-unit.ts.tpl" "$TARGET/front/tests/unitaire/exemple.spec.ts"
-    render "$TPL/tests-setup/exemple-unit.ts.tpl" "$TARGET/back/tests/unitaire/exemple.test.ts"
-  elif [ "$LAYOUT" = "package" ]; then
-    render "$TPL/tests-setup/exemple-unit.ts.tpl" "$TARGET/tests/unitaire/exemple.test.ts"
-  else
-    render "$TPL/tests-setup/exemple-unit.ts.tpl" "$TARGET/tests/unitaire/exemple.spec.ts"
-  fi
-  # Postman — validation rejouable de l'API (package : seulement si --postman)
-  if [ "$LAYOUT" = "front-back" ]; then
-    render "$TPL/tests-setup/postman_collection.json" "$TARGET/back/tests/systeme/postman_collection.json"
-  elif [ "$LAYOUT" = "single" ] || { [ "$LAYOUT" = "package" ] && [ "$POSTMAN" = 1 ]; }; then
-    render "$TPL/tests-setup/postman_collection.json" "$TARGET/tests/systeme/postman_collection.json"
-  fi
-fi
-
-if [ "$ACCEPTANCE" = 1 ]; then
-  echo "→ Tests d'acceptation / non-fonctionnels (UAT)"
-  for d in tests/acceptance/uat/disponibilite tests/acceptance/uat/securite \
-           tests/acceptance/uat/performance tests/acceptance/uat/robustesse; do
-    mkdir -p "$TARGET/$d"
-    touch "$TARGET/$d/.gitkeep"
-  done
-fi
 
 echo "→ CI ($CI)"
 case "$CI" in
