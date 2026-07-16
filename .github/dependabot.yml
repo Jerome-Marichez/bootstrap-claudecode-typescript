@@ -1,0 +1,11 @@
+version: 2
+# Seul écosystème pertinent : ce dépôt n'a pas de package.json, son code est du
+# Bash. Les actions sont épinglées sur des tags mobiles (@v7, @v6), que GitHub
+# peut déplacer — Dependabot rend ces montées de version explicites.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
