@@ -43,7 +43,9 @@ while [ $# -gt 0 ]; do
     *) echo "Option inconnue : $1" >&2; exit 1 ;;
   esac
 done
-[ -n "$APP" ] && [ -d "$APP" ] || { echo "--app <projet généré> obligatoire" >&2; exit 1; }
+if [ -z "$APP" ] || [ ! -d "$APP" ]; then
+  echo "--app <projet généré> obligatoire" >&2; exit 1
+fi
 [ -n "$OUT" ] || { echo "--out <dossier> obligatoire" >&2; exit 1; }
 if ! command -v claude >/dev/null || ! command -v jq >/dev/null; then
   echo "claude + jq requis" >&2; exit 1

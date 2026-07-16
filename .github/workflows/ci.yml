@@ -28,6 +28,9 @@ jobs:
       - uses: actions/checkout@v7
       - name: Shellcheck (severity=style)
         run: |
+          # Version tracée : le runner la fournit, et une version plus ancienne
+          # que celle du poste local peut signaler davantage (ex. SC2015).
+          shellcheck --version
           shellcheck -x \
             scripts/bootstrap.sh scripts/smoke-test.sh scripts/benchmark-routing.sh \
             templates/hooks/*.sh templates/scripts/*.sh
