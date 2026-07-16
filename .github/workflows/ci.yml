@@ -56,7 +56,7 @@ jobs:
       # .nvmrc qu'il produit porte NODE_VERSION, la source de vérité du dépôt.
       - name: Générer le projet
         run: ./scripts/bootstrap.sh --name proj-tc --owner CI --target tc ${{ matrix.case.flags }} --no-git
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: tc/.nvmrc
       - name: Installer et compiler
