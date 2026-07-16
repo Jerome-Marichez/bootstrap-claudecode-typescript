@@ -19,5 +19,6 @@
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "// exclude": "cypress.config.ts et tests/e2e chargent les types de Cypress, dont le expect() de Chai écrase celui de Jest : les tests unitaires ne compileraient plus. Cypress type-vérifie ses specs lui-même.",
+  "exclude": ["node_modules", "cypress.config.ts", "tests/e2e"]
 }
