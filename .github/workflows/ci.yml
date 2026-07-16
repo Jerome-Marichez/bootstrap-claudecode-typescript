@@ -18,3 +18,44 @@ jobs:
       - uses: actions/checkout@v7
       - name: Smoke test (4 layouts)
         run: ./scripts/smoke-test.sh
+
+  shellcheck:
+    # 98 % du code de ce dépôt est du Bash : bash -n n'en vérifie que la syntaxe.
+    # Analyse statique, donc ubuntu seul suffit (shellcheck y est préinstallé).
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Shellcheck (severity=style)
+        run: |
+          shellcheck -x \
+            scripts/bootstrap.sh scripts/smoke-test.sh scripts/benchmark-routing.sh \
+            templates/hooks/*.sh templates/scripts/*.sh
+
+  version-bump:
+    # CLAUDE.md impose de bumper plugin.json dans la même PR : sans bump, le
+    # workflow release ne crée aucun tag et la release est perdue en silence.
+    name: Bump de version
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Vérifier le bump de .claude-plugin/plugin.json
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          base=$(git show "origin/$BASE_REF:.claude-plugin/plugin.json" | jq -r .version)
+          head=$(jq -r .version .claude-plugin/plugin.json)
+          if [ "$base" = "$head" ]; then
+            echo "::error::Version inchangée ($head). CLAUDE.md impose un bump SemVer dans la même PR, sinon aucune release ne sera publiée."
+            exit 1
+          fi
+          higher=$(printf '%s\n%s\n' "$base" "$head" | sort -V | tail -n1)
+          if [ "$higher" != "$head" ]; then
+            echo "::error::Version $head n'est pas supérieure à $base."
+            exit 1
+          fi
+          echo "Version $base → $head"

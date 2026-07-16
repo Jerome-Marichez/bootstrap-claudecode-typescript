@@ -23,9 +23,33 @@ check() { # check "description" <commande...>
 }
 
 echo "→ Syntaxe des scripts"
-for f in "$ROOT"/scripts/*.sh "$ROOT"/templates/hooks/*.sh "$ROOT"/templates/scripts/*.sh; do
+for f in "$ROOT"/scripts/*.sh "$ROOT"/scripts/lib/*.sh \
+         "$ROOT"/templates/hooks/*.sh "$ROOT"/templates/scripts/*.sh; do
   check "bash -n $(basename "$f")" bash -n "$f"
 done
+
+echo "→ Shellcheck"
+if command -v shellcheck >/dev/null 2>&1; then
+  # -x depuis les points d'entrée seulement : les libs sont suivies via leurs
+  # directives « source= », et les analyser isolément ferait croire à tort que
+  # les variables qu'elles définissent pour bootstrap.sh sont inutilisées.
+  check "shellcheck -x (scripts + hooks)" shellcheck -x \
+    "$ROOT"/scripts/bootstrap.sh "$ROOT"/scripts/smoke-test.sh "$ROOT"/scripts/benchmark-routing.sh \
+    "$ROOT"/templates/hooks/*.sh "$ROOT"/templates/scripts/*.sh
+else
+  echo "  – shellcheck absent : étape sautée (la CI le fournit)"
+fi
+
+echo "→ Règle des 300 lignes (le dépôt s'y soumet aussi)"
+# check-max-lines.sh est un template destiné aux projets générés et ne cible que
+# le JS/TS : le Bash de ce dépôt échappait donc à la limite qu'il impose.
+sh_under_300() {
+  local over
+  over=$(find "$ROOT/scripts" "$ROOT/templates" -name '*.sh' -type f -exec awk \
+    'END { if (NR > 300) print FILENAME " (" NR ")" }' {} \;)
+  [ -z "$over" ] || { echo "$over"; return 1; }
+}
+check "aucun .sh du dépôt > 300 lignes" sh_under_300
 
 echo "→ Cohérence des points de vérité"
 # BIOME_VERSION (plage installée) et BIOME_SCHEMA_VERSION (schéma figé de
@@ -71,8 +95,11 @@ partial_target_cleaned() {
   mkdir -p "$fakebin"
   printf '#!/bin/sh\nexit 1\n' > "$fakebin/sed"
   chmod +x "$fakebin/sed"
-  ! PATH="$fakebin:$PATH" "$ROOT/scripts/bootstrap.sh" --name proj-boom --owner Testeur \
-      --target "$t" --layout package --no-git >/dev/null 2>&1
+  if PATH="$fakebin:$PATH" "$ROOT/scripts/bootstrap.sh" --name proj-boom --owner Testeur \
+       --target "$t" --layout package --no-git >/dev/null 2>&1; then
+    rm -rf "$fakebin"
+    return 1  # la génération aurait dû échouer : le test ne prouve plus rien
+  fi
   rm -rf "$fakebin"
   [ ! -e "$t" ]
 }
@@ -80,7 +107,7 @@ check "cible nettoyée après échec" partial_target_cleaned
 
 echo "→ Layout front-back (Next.js)"
 check "shared/schemas généré"            test -f "$TMP/fb/shared/schemas/exemple.schema.ts"
-check "6 workflows GitHub"               test "$(ls "$TMP/fb/.github/workflows" | wc -l)" -eq 6
+check "6 workflows GitHub"               test "$(find "$TMP/fb/.github/workflows" -maxdepth 1 -type f | wc -l)" -eq 6
 check "release-main sur front/package"   grep -q 'front/package.json' "$TMP/fb/.github/workflows/release-main.yml"
 check "template d'issue GitHub (+ frontmatter)" grep -q '^name:' "$TMP/fb/.github/ISSUE_TEMPLATE/issue.md"
 check "collection Postman côté back"     test -f "$TMP/fb/back/tests/systeme/postman_collection.json"
