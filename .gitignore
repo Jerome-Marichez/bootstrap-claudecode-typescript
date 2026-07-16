@@ -1,2 +1,5 @@
 .DS_Store
 node_modules/
+*.tmp
+# Réglages Claude Code locaux : personnels, jamais partagés.
+.claude/settings.local.json
