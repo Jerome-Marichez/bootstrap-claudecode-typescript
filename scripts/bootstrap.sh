@@ -34,6 +34,9 @@ TPL="$ROOT/templates"
 # Points de vérité uniques — propagés partout via les tokens.
 NODE_VERSION="24"
 BIOME_VERSION="^2.0.0"
+# Version exacte du schéma JSON de biome.json : doit rester dans la plage de
+# BIOME_VERSION ci-dessus (le smoke test vérifie la cohérence des majeurs).
+BIOME_SCHEMA_VERSION="2.5.2"
 
 NAME=""
 DESC=""
@@ -71,12 +74,16 @@ done
 case "$NAME" in *[!a-z0-9-]*) echo "--name doit être en kebab-case (a-z, 0-9, tirets)" >&2; exit 1 ;; esac
 [ -n "$TARGET" ] || { echo "--target est obligatoire" >&2; exit 1; }
 [ -n "$DESC" ]   || DESC="Projet $NAME"
+# Les tokens sont substitués par un s/// de sed, qui ne survit pas à un retour à
+# la ligne dans le remplacement : on les aplatit en espaces.
+DESC=$(printf '%s' "$DESC" | tr '\n' ' ')
 if [ -z "$OWNER" ]; then
   # L'auteur est TOUJOURS le compte lié à la forge : celui connecté à la CLI gh.
   OWNER=$(gh api user --jq '.name // .login' 2>/dev/null || true)
   [ -z "$OWNER" ] && OWNER=$(git config user.name 2>/dev/null || true)
   [ -z "$OWNER" ] && { echo "--owner requis : aucun compte gh connecté (gh auth login) ni git config user.name" >&2; exit 1; }
 fi
+OWNER=$(printf '%s' "$OWNER" | tr '\n' ' ')
 case "$LAYOUT" in front-back|single|package) ;; *) echo "--layout doit être front-back, single ou package" >&2; exit 1 ;; esac
 case "$CI" in github|gitlab|none) ;; *) echo "--ci doit être github, gitlab ou none" >&2; exit 1 ;; esac
 
@@ -97,6 +104,20 @@ if [ -e "$TARGET" ] && [ -n "$(ls -A "$TARGET" 2>/dev/null)" ]; then
   exit 1
 fi
 
+# Sans ce trap, un échec à mi-parcours laisse une cible à moitié construite que
+# la garde ci-dessus refuserait de re-remplir. On ne supprime que ce qu'on a créé.
+CREATED_TARGET=0
+[ -e "$TARGET" ] || CREATED_TARGET=1
+cleanup() {
+  status=$?
+  if [ "$status" -ne 0 ] && [ "$CREATED_TARGET" = 1 ]; then
+    rm -rf "$TARGET"
+    echo "Échec : $TARGET nettoyé." >&2
+  fi
+  exit "$status"
+}
+trap cleanup EXIT
+
 mkdir -p "$TARGET"
 
 # Tags actifs pour les blocs conditionnels (>>only:.../<<only) des templates.
@@ -112,15 +133,20 @@ if [ "$TESTS_SETUP" = 1 ]; then KEYS="$KEYS tests-setup"; fi
 # Fichier point de vérité de la version SemVer (workflow de release sur main).
 if [ "$LAYOUT" = "front-back" ]; then VERSION_FILE="front/package.json"; else VERSION_FILE="package.json"; fi
 
+# Échappe une valeur pour le remplacement d'un s/// de sed.
+# Les retours à la ligne sont aplatis en amont (cf. validation de DESC).
+esc() { printf '%s' "$1" | sed 's/[&/\]/\\&/g'; }
+
 # Copie un template en substituant les tokens puis en filtrant les blocs only.
 render() { # render <src> <dst>
   mkdir -p "$(dirname "$2")"
-  sed -e "s/{{PROJECT_NAME}}/$NAME/g" \
-      -e "s/{{PROJECT_DESC}}/$(printf '%s' "$DESC" | sed 's/[&/\]/\\&/g')/g" \
-      -e "s/{{OWNER}}/$(printf '%s' "$OWNER" | sed 's/[&/\]/\\&/g')/g" \
-      -e "s/{{FRAMEWORK}}/$(printf '%s' "$FRAMEWORK_LABEL" | sed 's/[&/\]/\\&/g')/g" \
-      -e "s/{{NODE_VERSION}}/$NODE_VERSION/g" \
-      -e "s/{{BIOME_VERSION}}/$(printf '%s' "$BIOME_VERSION" | sed 's/[&/\]/\\&/g')/g" \
+  sed -e "s/{{PROJECT_NAME}}/$(esc "$NAME")/g" \
+      -e "s/{{PROJECT_DESC}}/$(esc "$DESC")/g" \
+      -e "s/{{OWNER}}/$(esc "$OWNER")/g" \
+      -e "s/{{FRAMEWORK}}/$(esc "$FRAMEWORK_LABEL")/g" \
+      -e "s/{{NODE_VERSION}}/$(esc "$NODE_VERSION")/g" \
+      -e "s/{{BIOME_VERSION}}/$(esc "$BIOME_VERSION")/g" \
+      -e "s/{{BIOME_SCHEMA_VERSION}}/$(esc "$BIOME_SCHEMA_VERSION")/g" \
       -e "s|{{VERSION_FILE}}|$VERSION_FILE|g" \
       "$1" \
   | awk -v keys=" $KEYS " '

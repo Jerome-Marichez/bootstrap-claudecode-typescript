@@ -18,6 +18,13 @@
 # Fonctionne sur tout projet contenant un .claude/ du plugin (généré ou greffé),
 # ex. une implémentation RealWorld : --install-cmd "npm install" --test-cmd "CI=true npx react-scripts test --watchAll=false".
 # Nécessite : claude (CLI), jq, rsync, make, npm. Coût : appels API réels.
+#
+# set -eu volontairement SANS pipefail (contrairement à bootstrap.sh et
+# smoke-test.sh) : la boucle de prompts est alimentée par « grep -v '^#' | while
+# read », et grep sort en 1 quand aucune ligne ne matche (fichier de prompts vide
+# ou entièrement commenté). Sous pipefail, ce cas dégénéré tuerait le run entier
+# au lieu de le laisser produire un résultat vide. Les commandes critiques
+# (install/lint/test) gèrent déjà leur échec explicitement.
 set -eu
 
 APP="" ; OUT="" ; RUNS=1 ; MODEL="opus"
