@@ -76,6 +76,11 @@ cutoff=$(date -u -v-"${MAX_AGE_MONTHS}"m +%Y-%m-%dT%H:%M:%S 2>/dev/null \
       || date -u -d "-${MAX_AGE_MONTHS} months" +%Y-%m-%dT%H:%M:%S 2>/dev/null)
 [ -z "$cutoff" ] && ask "Impossible de calculer la date limite de fraîcheur — confirmation manuelle requise."
 
+# Le word-splitting sur $pkgs est voulu (liste séparée par des espaces) ; set -f
+# désarme le glob pour qu'un nom de paquet contenant * ou ? ne soit pas expansé
+# sur le disque.
+set -f
+# shellcheck disable=SC2086  # word-splitting voulu, glob désarmé par set -f
 for pkg in $pkgs; do
   enc=$(printf '%s' "$pkg" | sed 's|/|%2F|g')
 
@@ -140,5 +145,6 @@ for pkg in $pkgs; do
     deny "Dépendance $pkg ($repo) : $contribs contributeur(s) (< $MIN_CONTRIBUTORS) — installation refusée."
   fi
 done
+set +f
 
 exit 0

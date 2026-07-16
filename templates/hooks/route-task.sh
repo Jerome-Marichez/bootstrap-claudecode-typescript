@@ -59,7 +59,7 @@ fi
 
 # --- Budget crédits (cache ccusage 10 min) --------------------------------------
 budget_note="" boost_msg=""
-if [ -n "${CREDITS_LIMIT_TOKENS:-}" ] && command -v npx >/dev/null 2>&1; then
+if [ "${CREDITS_LIMIT_TOKENS:-0}" -gt 0 ] 2>/dev/null && command -v npx >/dev/null 2>&1; then
   cache="${TMPDIR:-/tmp}/claude-route-task-$(printf '%s' "${CLAUDE_PROJECT_DIR:-$PWD}" | cksum | cut -d' ' -f1).json"
   if [ -z "$(find "$cache" -mmin -10 2>/dev/null)" ]; then
     if npx -y ccusage@latest blocks --active --json > "$cache.tmp" 2>/dev/null; then
@@ -88,8 +88,14 @@ if [ -n "${CREDITS_LIMIT_TOKENS:-}" ] && command -v npx >/dev/null 2>&1; then
 fi
 
 # --- Journal (évaluer avant d'abaisser un type de tâche) ------------------------
+# Une ligne par prompt : rotation au-delà de LOG_MAX_LINES, en retombant à la
+# moitié — le seuil haut évite de payer un tail à chaque prompt.
 log="${CLAUDE_PROJECT_DIR:-.}/.claude/route-task.log"
 if [ -d "$(dirname "$log")" ]; then
+  log_max="${LOG_MAX_LINES:-2000}"
+  if [ -f "$log" ] && [ "$(wc -l < "$log" 2>/dev/null || echo 0)" -gt "$log_max" ] 2>/dev/null; then
+    tail -n "$(( log_max / 2 ))" "$log" > "$log.tmp" 2>/dev/null && mv "$log.tmp" "$log" || rm -f "$log.tmp"
+  fi
   jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg c "$class" --arg a "$agent" \
     --arg w "$words" '{ts:$ts, class:$c, agent:$a, words:($w|tonumber)}' >> "$log" 2>/dev/null
 fi

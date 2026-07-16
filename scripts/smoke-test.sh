@@ -27,6 +27,27 @@ for f in "$ROOT"/scripts/*.sh "$ROOT"/templates/hooks/*.sh "$ROOT"/templates/scr
   check "bash -n $(basename "$f")" bash -n "$f"
 done
 
+echo "→ Cohérence des points de vérité"
+# BIOME_VERSION (plage installée) et BIOME_SCHEMA_VERSION (schéma figé de
+# biome.json) sont deux constantes distinctes : leurs majeurs doivent concorder.
+biome_majors_match() {
+  local bs range schema
+  bs="$ROOT/scripts/bootstrap.sh"
+  range=$(awk -F'"' '/^BIOME_VERSION=/{gsub(/[^0-9.]/,"",$2); split($2,a,"."); print a[1]}' "$bs")
+  schema=$(awk -F'"' '/^BIOME_SCHEMA_VERSION=/{split($2,a,"."); print a[1]}' "$bs")
+  [ -n "$range" ] && [ "$range" = "$schema" ]
+}
+check "majeurs Biome cohérents (version/schéma)" biome_majors_match
+# Deux fichiers distincts portent le seuil des 300 lignes (CI et hook) : ils sont
+# copiés séparément dans les projets générés et doivent rester alignés.
+max_lines_aligned() {
+  local n
+  n=$(grep -hE '^MAX=' "$ROOT/templates/scripts/check-max-lines.sh" \
+        "$ROOT/templates/hooks/check-file-length.sh" | sort -u | wc -l)
+  [ "$n" -eq 1 ]
+}
+check "seuil 300 aligné (check-max-lines / check-file-length)" max_lines_aligned
+
 echo "→ Génération des layouts"
 "$ROOT/scripts/bootstrap.sh" --name proj-fb     --owner Testeur --target "$TMP/fb"     --layout front-back --acceptance --no-git >/dev/null
 GIT_AUTHOR_NAME=Testeur GIT_AUTHOR_EMAIL=t@local GIT_COMMITTER_NAME=Testeur GIT_COMMITTER_EMAIL=t@local \
@@ -35,6 +56,27 @@ GIT_AUTHOR_NAME=Testeur GIT_AUTHOR_EMAIL=t@local GIT_COMMITTER_NAME=Testeur GIT_
 "$ROOT/scripts/bootstrap.sh" --name proj-api    --owner Testeur --target "$TMP/api"    --layout package --postman --no-git >/dev/null
 bad_name_refused() { ! "$ROOT/scripts/bootstrap.sh" --name 'Bad Name' --owner Testeur --target "$TMP/bad" >/dev/null 2>&1; }
 check "nom non kebab-case refusé" bad_name_refused
+# Un retour à la ligne dans --desc cassait le s/// de sed.
+multiline_desc_ok() {
+  "$ROOT/scripts/bootstrap.sh" --name proj-nl --owner Testeur --target "$TMP/nl" \
+    --layout package --no-git --desc "$(printf 'ligne1\nligne2')" >/dev/null 2>&1 \
+    && grep -q 'ligne1 ligne2' "$TMP/nl/README.md"
+}
+check "--desc multi-ligne accepté" multiline_desc_ok
+# Sans trap, un échec à mi-parcours laissait une cible à moitié construite que la
+# garde « existe et non vide » refusait ensuite de re-remplir. On sabote sed (que
+# render utilise) pour faire échouer la génération APRÈS la création de la cible.
+partial_target_cleaned() {
+  local t="$TMP/boom" fakebin="$TMP/fakebin"
+  mkdir -p "$fakebin"
+  printf '#!/bin/sh\nexit 1\n' > "$fakebin/sed"
+  chmod +x "$fakebin/sed"
+  ! PATH="$fakebin:$PATH" "$ROOT/scripts/bootstrap.sh" --name proj-boom --owner Testeur \
+      --target "$t" --layout package --no-git >/dev/null 2>&1
+  rm -rf "$fakebin"
+  [ ! -e "$t" ]
+}
+check "cible nettoyée après échec" partial_target_cleaned
 
 echo "→ Layout front-back (Next.js)"
 check "shared/schemas généré"            test -f "$TMP/fb/shared/schemas/exemple.schema.ts"
@@ -46,7 +88,7 @@ check "dossiers UAT (--acceptance)"      test -d "$TMP/fb/tests/acceptance/uat/r
 check ".nvmrc présent"                   test -f "$TMP/fb/.nvmrc"
 check "owner substitué"                  grep -q 'Testeur' "$TMP/fb/README.md"
 check "hooks exécutables"                test -x "$TMP/fb/.claude/hooks/check-test-location.sh"
-check "aucun token non substitué"        bash -c "! grep -rE '\{\{(PROJECT_NAME|PROJECT_DESC|OWNER|FRAMEWORK|NODE_VERSION|BIOME_VERSION)\}\}' '$TMP/fb'"
+check "aucun token non substitué"        bash -c "! grep -rE '\{\{(PROJECT_NAME|PROJECT_DESC|OWNER|FRAMEWORK|NODE_VERSION|BIOME_VERSION|BIOME_SCHEMA_VERSION)\}\}' '$TMP/fb'"
 check "aucun marqueur only résiduel"     bash -c "! grep -rE '>>only:|<<only' '$TMP/fb' '$TMP/single' '$TMP/pkg' '$TMP/api'"
 check "check-max-lines passe"            "$TMP/fb/scripts/check-max-lines.sh" "$TMP/fb"
 check "package.json front (next)"        grep -q '"next"' "$TMP/fb/front/package.json"
@@ -125,6 +167,29 @@ check "override !! → silence"            no_output "!!repense toute l architec
 check "commande slash → silence"         no_output "/merge-prod"
 check "court sans signal → silence"      no_output "ok merci"
 check "journal JSONL écrit"              bash -c "jq -e '.agent' '$TMP/fb/.claude/route-task.log' >/dev/null"
+# CREDITS_LIMIT_TOKENS=0 provoquait une division par zéro. Le bloc budget n'est
+# atteint que si un cache ccusage frais existe : on l'injecte, sinon le test ne
+# vérifierait rien (et aucun appel réseau n'est fait, le cache faisant foi).
+credits_zero_silent() {
+  local dir="$TMP/credits" cache err
+  mkdir -p "$dir"
+  cache="$dir/claude-route-task-$(printf '%s' "$TMP/fb" | cksum | cut -d' ' -f1).json"
+  printf '{"blocks":[{"totalTokens":1000,"endTime":"2099-01-01T00:00:00.000Z"}]}' > "$cache"
+  err=$(printf '{"prompt":"implémente le tri de la liste des produits"}' \
+    | CLAUDE_PROJECT_DIR="$TMP/fb" TMPDIR="$dir" CREDITS_LIMIT_TOKENS=0 bash "$rhook" 2>&1 >/dev/null)
+  [ -z "$err" ]
+}
+check "CREDITS_LIMIT_TOKENS=0 sans erreur" credits_zero_silent
+# Le journal grossissait indéfiniment (une ligne par prompt).
+log_rotates() {
+  local log="$TMP/fb/.claude/route-task.log" n
+  seq 1 60 | sed 's/.*/{"ts":"x","class":"c","agent":"a","words":1}/' > "$log"
+  printf '{"prompt":"implémente le tri de la liste des produits"}' \
+    | CLAUDE_PROJECT_DIR="$TMP/fb" LOG_MAX_LINES=50 bash "$rhook" >/dev/null 2>&1
+  n=$(wc -l < "$log")
+  [ "$n" -le 30 ]
+}
+check "journal tronqué au-delà du seuil" log_rotates
 
 echo "→ Hooks (check-file-length, remind-docs + throttle)"
 flhook="$TMP/fb/.claude/hooks/check-file-length.sh"
