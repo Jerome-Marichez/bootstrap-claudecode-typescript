@@ -119,6 +119,10 @@ check "aucun token non substitué"        bash -c "! grep -rE '\{\{(PROJECT_NAME
 check "aucun marqueur only résiduel"     bash -c "! grep -rE '>>only:|<<only' '$TMP/fb' '$TMP/single' '$TMP/pkg' '$TMP/api'"
 check "check-max-lines passe"            "$TMP/fb/scripts/check-max-lines.sh" "$TMP/fb"
 check "package.json front (next)"        grep -q '"next"' "$TMP/fb/front/package.json"
+# L'include "**/*.ts" du tsconfig Next aspirait cypress.config.ts, dont les types
+# Chai écrasent le expect() de Jest : les tests unitaires ne compilaient plus.
+# Contrôle structurel — la compilation réelle est faite par le job CI typecheck.
+check "tsconfig next exclut Cypress"     bash -c "jq -e '.exclude | index(\"cypress.config.ts\")' '$TMP/fb/front/tsconfig.json' >/dev/null"
 check "nom suffixé front/back"           bash -c "grep -q '\"proj-fb-front\"' '$TMP/fb/front/package.json' && grep -q '\"proj-fb-back\"' '$TMP/fb/back/package.json'"
 check "app Next.js (layout+page)"        bash -c "test -f '$TMP/fb/front/src/app/layout.tsx' && test -f '$TMP/fb/front/next.config.mjs'"
 check "serveur back généré"              test -f "$TMP/fb/back/src/index.ts"

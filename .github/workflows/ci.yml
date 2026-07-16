@@ -32,6 +32,40 @@ jobs:
             scripts/bootstrap.sh scripts/smoke-test.sh scripts/benchmark-routing.sh \
             templates/hooks/*.sh templates/scripts/*.sh
 
+  typecheck:
+    # Le smoke test génère les projets mais ne les compile pas : c'est ce trou qui
+    # a laissé passer un tsconfig Next dont l'include aspirait cypress.config.ts,
+    # rendant les tests unitaires non compilables. Ici on installe et on compile
+    # pour de vrai — le seul contrôle qui prouve qu'un projet généré tient debout.
+    name: Typecheck des projets générés (${{ matrix.case.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        case:
+          - { name: front-back, flags: "--layout front-back", dirs: "front back" }
+          - { name: single-nextjs, flags: "--layout single --framework nextjs", dirs: "." }
+          - { name: single-vite, flags: "--layout single --framework vite", dirs: "." }
+          - { name: package, flags: "--layout package --no-storybook", dirs: "." }
+    steps:
+      - uses: actions/checkout@v7
+      # Générer avant setup-node : bootstrap.sh n'a besoin que de bash, et le
+      # .nvmrc qu'il produit porte NODE_VERSION, la source de vérité du dépôt.
+      - name: Générer le projet
+        run: ./scripts/bootstrap.sh --name proj-tc --owner CI --target tc ${{ matrix.case.flags }} --no-git
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: tc/.nvmrc
+      - name: Installer et compiler
+        working-directory: tc
+        run: |
+          set -euo pipefail
+          for d in ${{ matrix.case.dirs }}; do
+            echo "::group::$d"
+            (cd "$d" && npm install --no-audit --no-fund && npx tsc --noEmit)
+            echo "::endgroup::"
+          done
+
   version-bump:
     # CLAUDE.md impose de bumper plugin.json dans la même PR : sans bump, le
     # workflow release ne crée aucun tag et la release est perdue en silence.

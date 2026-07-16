@@ -1,7 +1,7 @@
 {
   "name": "bootstrap-claudecode-typescript",
   "description": "Initialise un projet TypeScript/React immediatement fonctionnel : README + docs/, CLAUDE.md, hooks (routage de modeles, tests, 300 lignes, dependances), subagents opus/haiku, skills Claude Code, package.json + tsconfig cables (Next.js ou Vite, Jest, Zod, Biome), Docker multi-stage + compose, structure de tests avec exemple qui passe, workflows GitHub Actions ou GitLab CI reels.",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "author": {
     "name": "Marichez Jérôme"
   },
