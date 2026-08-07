@@ -34,6 +34,11 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-new-dependency.sh\"",
             "statusMessage": "Vérif nouvelle dépendance"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-ci-before-publish.sh\"",
+            "statusMessage": "Vérif pipeline avant publication"
           }
         ]
       }
