@@ -41,8 +41,9 @@ Le projet suit **toujours** un modèle à deux branches permanentes :
 6. **Hotfix** : `hotfix/<nom>` depuis `main`, fusionné dans `main` **et** `dev`.
 7. **`main` est une branche protégée** : push direct interdit, PR obligatoire, checks CI au vert, revue approuvée. Détails : [`docs/git-workflow.md`](./docs/git-workflow.md).
 8. **Intégrité des contrôles — aucun truquage.** L'assistant ne doit **jamais** modifier, désactiver, supprimer, ignorer (`skip`/`xfail`) ou affaiblir un **test**, une **assertion**, ni un **fichier de configuration CI/CD** (workflows, seuils de couverture, linters, limite de lignes…) dans le but de faire passer artificiellement la CI ou de masquer une régression. Les checks passent au vert **par une correction réelle du code**. Une évolution légitime d'un test reste possible, mais doit être **justifiée et documentée** dans la PR.
-9. **Pas d'auto-modification des règles.** L'assistant ne modifie **jamais** ce `CLAUDE.md`, un skill, un hook ou toute règle du projet **pour contourner** les consignes. Toute évolution de ces règles se fait à la demande explicite de {{OWNER}}.
-10. **CI en échec — corriger puis escalader.** L'assistant retente 2 à 3 fois en corrigeant réellement, puis **signale à {{OWNER}}** avec un diagnostic clair si le blocage persiste.
+9. **Pipeline verte avant toute publication.** Aucun `git push` vers `main`/`dev`, aucune fusion de PR, aucun tag, aucune release, aucun `npm publish` tant que la pipeline du **commit courant** n'est pas **verte** — le hook `check-ci-before-publish.sh` interroge GitHub Actions (ou GitLab CI) et refuse une pipeline rouge **ou en cours**. Les contournements (`--no-verify`, `[skip ci]`, `gh pr merge --admin`, `gh run cancel`, `continue-on-error: true`, `allow_failure: true`, `|| true` sur un test) sont refusés sans condition. Détails : [`docs/ci-cd.md`](./docs/ci-cd.md).
+10. **Pas d'auto-modification des règles.** L'assistant ne modifie **jamais** ce `CLAUDE.md`, un skill, un hook ou toute règle du projet **pour contourner** les consignes. Toute évolution de ces règles se fait à la demande explicite de {{OWNER}}.
+11. **CI en échec — corriger puis escalader.** L'assistant retente 2 à 3 fois en corrigeant réellement, puis **signale à {{OWNER}}** avec un diagnostic clair si le blocage persiste.
 
 ## Politique de tests
 

@@ -19,6 +19,12 @@ dossier cible passé en `--target`. Ce qu'il faut savoir avant de l'installer :
   installation de dépendance. Il utilise le jeton de `gh auth token` ou
   `$GITHUB_TOKEN` s'il en trouve un, en lecture seule. Ce jeton est passé en
   argument à `curl`, donc brièvement visible dans la table des processus locale.
+- **`templates/hooks/check-ci-before-publish.sh`**, installé dans les projets
+  générés, appelle `gh run list` (ou `glab api`) avant toute commande publiante,
+  pour lire l'état de la pipeline du commit courant. Il n'écrit rien, ne
+  transmet aucun contenu du dépôt et s'appuie sur l'authentification déjà
+  configurée de la CLI ; sans CLI ni réseau, il demande une confirmation humaine
+  au lieu de laisser passer.
 - **`templates/hooks/route-task.sh`** peut invoquer `npx ccusage` (résultat mis
   en cache 10 min) uniquement si `CREDITS_LIMIT_TOKENS` est défini, et journalise
   la classification de chaque prompt dans `.claude/route-task.log` — classe et

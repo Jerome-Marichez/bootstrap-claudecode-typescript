@@ -74,8 +74,9 @@ le générateur prend le compte connecté à la CLI GitHub (`gh api user`), à d
 Le générateur crée un projet **immédiatement fonctionnel** : README.md, CLAUDE.md,
 docs/ (14 docs, adaptées au layout), .claude/ (hooks : routage de modèles
 `route-task.sh`, test avant code écrit par le développeur (`require-test-first.sh`),
-pas de mocks (`check-test-doubles.sh`), emplacement des tests, 300 lignes,
-dépendances, rappels doc/tests ;
+pas de mocks (`check-test-doubles.sh`), pipeline verte avant publication
+(`check-ci-before-publish.sh`), emplacement des tests, 300 lignes, dépendances,
+rappels doc/tests ;
 settings.json ; subagents `opus-architect`/`opus-dev`/`opus-frontend` (si UI)/`haiku-mechanic` ; skills
 `/create-issue`, `/create-feat`, `/merge-prod`), **package.json + tsconfig.json
 câblés** (Zod, Jest, Biome ; Next.js ou Vite réellement installés selon le
