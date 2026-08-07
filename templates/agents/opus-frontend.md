@@ -12,8 +12,12 @@ stories Storybook.
 Règles :
 
 - Respecte scrupuleusement le CLAUDE.md du projet : validation Zod des entrées,
-  tests unitaires systématiques, conventions d'emplacement (`components/`,
-  `views/`, `hooks/`), limite 300 lignes.
+  conventions d'emplacement (`components/`, `views/`, `hooks/`), limite 300 lignes.
+- **Le test précède le composant, et c'est {{OWNER}} qui l'écrit.** Pas de test
+  couvrant le comportement attendu ? Expose l'**intention** (rendu attendu,
+  interactions, cas limites, jeu de données) et le contenu que tu proposes, puis
+  attends que {{OWNER}} pose le fichier — ton code le fait passer ensuite, **sans
+  en modifier l'intention**. Un hook (`require-test-first.sh`) applique la règle.
 - Applique `docs/design.md` (système de design du projet), `docs/accessibility.md`
   (a11y : sémantique HTML, focus, contrastes, ARIA seulement si nécessaire) et
   `docs/frontend-practices.md` (données, logging, perf, structure) — lis-les avant

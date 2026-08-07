@@ -42,8 +42,11 @@ principale reste propre et plusieurs fonctionnalités peuvent avancer en parall�
    contient :
    - le **répertoire du worktree** comme unique zone de travail ;
    - l'**issue** (numéro, description, critères d'acceptation) ;
-   - les règles du projet : tests unitaires **systématiques**, intégration/e2e à
-     proposer, lint (`make lint`, 300 lignes max), mise à jour de la doc ;
+   - les règles du projet : **le test précède le code et il est écrit par
+     {{OWNER}}** (le subagent expose l'intention + le contenu proposé et attend
+     que le test soit posé — au moins l'un des trois niveaux : unitaire,
+     intégration, système), le code doit passer ce test **sans en modifier
+     l'intention** ; lint (`make lint`, 300 lignes max) ; mise à jour de la doc ;
    - la consigne finale : commits sur `feature/<nom>`, push, puis **PR vers `dev`**
      (`gh pr create --base dev`) avec `Closes #N` — et rendre compte (PR ouverte,
      état des checks).

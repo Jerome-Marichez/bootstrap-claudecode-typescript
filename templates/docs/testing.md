@@ -42,6 +42,42 @@ lancée — runner Node natif (`node:test` + `fetch`), dans `tests/acceptance/` 
 `tests/acceptance/uat/<catégorie>/`.
 <!-- <<only -->
 
+## Cycle : le test d'abord, écrit par le développeur
+
+L'ordre n'est pas négociable — il est appliqué par le hook
+`.claude/hooks/require-test-first.sh` (PreToolUse) :
+
+1. **Intention.** Le comportement attendu est formulé explicitement : ce qui doit se
+   passer, les cas limites, le niveau visé (**unitaire**, **intégration** ou
+   **système** — au moins l'un des trois), le jeu de données utilisé. L'assistant
+   propose cette intention et le contenu du test **dans le chat**.
+2. **Le test est posé par {{OWNER}}.** L'assistant n'écrit pas les fichiers de test :
+   le hook refuse toute écriture sur `*.spec.*`, `*.test.*`, `*.cy.ts` et sur les
+   dossiers `tests/`. Les **jeux de données** échappent à cette règle (ce ne sont pas
+   des tests) et restent à la charge de l'assistant.
+3. **Le test échoue pour la bonne raison**, puis le code est écrit pour le faire
+   passer. Écrire un fichier source qu'aucun test ne couvre déclenche une demande de
+   confirmation.
+4. **L'intention n'est jamais modifiée pour arranger le code** : pas d'assertion
+   retirée, pas de cas supprimé, pas de `skip`. Un test qui semble faux se signale,
+   il ne se réécrit pas.
+
+**Délégation ponctuelle** : {{OWNER}} peut confier l'écriture des tests à l'assistant
+en posant `TESTS_WRITABLE_BY_ASSISTANT=1` dans l'environnement de la session. Le hook
+exige alors que chaque test porte en tête un bloc d'intention :
+
+```ts
+/**
+ * Intention (validée par {{OWNER}}) :
+ * un panier vide facture 0 EUR, frais de port inclus.
+ * Cas limites : quantité nulle, remise supérieure au total.
+ */
+describe('CartService.total', () => { /* … */ });
+```
+
+Le garde-fou complet se désarme par `REQUIRE_TEST_FIRST=0` — décision de {{OWNER}},
+jamais de l'assistant.
+
 ## Qualité des tests — mutation testing (Stryker)
 
 **Stryker** mesure la capacité des tests unitaires/intégration à détecter de vraies
@@ -50,8 +86,10 @@ sous le seuil `break`). Lancer : `make test-mutation`.
 
 ## Règles
 
+- **Le test précède le code et il est écrit par {{OWNER}}** (voir la section
+  « Cycle » ci-dessus) ; le code s'adapte au test, jamais l'inverse.
 - **Pas de mocks des données métier** : les frontières (HTTP, base) sont pilotées avec
-  des **fixtures réalistes** ; les services métier réels collaborent entre eux.
+  des **jeux de données réalistes** ; les services métier réels collaborent entre eux.
 - **Base de test dédiée** (intégration back) : jamais la base de développement/production ;
   base propre entre les suites ; garde-fou anti-prod dans le setup.
 - **e2e réservé aux parcours navigateur** ; le bout-en-bout back sans navigateur est le
