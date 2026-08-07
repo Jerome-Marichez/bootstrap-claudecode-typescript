@@ -17,6 +17,10 @@ tool=$(printf '%s' "$input" | jq -r '.tool_name // empty')
 f=$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty')
 [ -z "$f" ] && exit 0
 
+# Les jeux de données ne sont pas des tests : tests/fixtures/ échappe à la
+# convention de nommage (docs/testing.md — pas de mocks, des fixtures).
+case "$f" in */tests/fixtures/*|tests/fixtures/*) exit 0 ;; esac
+
 deny() { jq -n --arg r "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'; exit 0; }
 
 case "$f" in

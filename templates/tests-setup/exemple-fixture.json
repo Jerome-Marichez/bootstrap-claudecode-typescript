@@ -1,0 +1,24 @@
+{
+  "_lisezmoi": "Jeu de données d'exemple ({{PROJECT_NAME}}) — PAS un mock. Les tests font tourner les vrais services sur ces données réalistes ; seules les frontières (HTTP, base) sont pilotées. Un fichier par cas métier, nommé <entite>.fixture.json. Voir docs/testing.md.",
+  "produits": [
+    {
+      "id": "prd-0001",
+      "libelle": "Clavier mécanique 87 touches",
+      "prixCentimes": 8990,
+      "tauxTva": 0.2,
+      "stock": 12
+    },
+    {
+      "id": "prd-0002",
+      "libelle": "Souris ergonomique verticale",
+      "prixCentimes": 4550,
+      "tauxTva": 0.2,
+      "stock": 0
+    }
+  ],
+  "panierVide": {
+    "id": "pnr-0001",
+    "lignes": [],
+    "totalCentimes": 0
+  }
+}

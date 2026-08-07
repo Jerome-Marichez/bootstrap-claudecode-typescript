@@ -6,16 +6,20 @@
 
 gen_tests() {
   echo "→ Structure de tests (layout : $LAYOUT)"
+  # tests/fixtures/ : les JEUX DE DONNÉES sur lesquels tournent les vrais services
+  # (la politique interdit les mocks — cf. docs/testing.md et check-test-doubles.sh).
   if [ "$LAYOUT" = "front-back" ]; then
     mkdir -p "$TARGET/front/tests/unitaire" "$TARGET/front/tests/integration" "$TARGET/front/tests/e2e" \
-             "$TARGET/back/tests/unitaire"  "$TARGET/back/tests/integration"  "$TARGET/back/tests/systeme"
-    for d in front/tests/unitaire front/tests/integration front/tests/e2e \
-             back/tests/unitaire back/tests/integration back/tests/systeme; do
+             "$TARGET/front/tests/fixtures" \
+             "$TARGET/back/tests/unitaire"  "$TARGET/back/tests/integration"  "$TARGET/back/tests/systeme" \
+             "$TARGET/back/tests/fixtures"
+    for d in front/tests/unitaire front/tests/integration front/tests/e2e front/tests/fixtures \
+             back/tests/unitaire back/tests/integration back/tests/systeme back/tests/fixtures; do
       touch "$TARGET/$d/.gitkeep"
     done
   elif [ "$LAYOUT" = "package" ]; then
-    mkdir -p "$TARGET/src" "$TARGET/tests/unitaire" "$TARGET/tests/integration"
-    for d in tests/unitaire tests/integration; do
+    mkdir -p "$TARGET/src" "$TARGET/tests/unitaire" "$TARGET/tests/integration" "$TARGET/tests/fixtures"
+    for d in tests/unitaire tests/integration tests/fixtures; do
       touch "$TARGET/$d/.gitkeep"
     done
     if [ "$POSTMAN" = 1 ]; then
@@ -24,8 +28,8 @@ gen_tests() {
     fi
   else
     mkdir -p "$TARGET/src" "$TARGET/tests/unitaire" "$TARGET/tests/integration" \
-             "$TARGET/tests/e2e" "$TARGET/tests/systeme"
-    for d in tests/unitaire tests/integration tests/e2e tests/systeme; do
+             "$TARGET/tests/e2e" "$TARGET/tests/systeme" "$TARGET/tests/fixtures"
+    for d in tests/unitaire tests/integration tests/e2e tests/systeme tests/fixtures; do
       touch "$TARGET/$d/.gitkeep"
     done
   fi
@@ -54,6 +58,13 @@ gen_tests() {
       render "$TPL/tests-setup/exemple-unit.ts.tpl" "$TARGET/tests/unitaire/exemple.test.ts"
     else
       render "$TPL/tests-setup/exemple-unit.ts.tpl" "$TARGET/tests/unitaire/exemple.spec.ts"
+    fi
+    # Jeu de données d'exemple — la forme attendue des fixtures, jamais un mock.
+    if [ "$LAYOUT" = "front-back" ]; then
+      render "$TPL/tests-setup/exemple-fixture.json" "$TARGET/front/tests/fixtures/exemple.fixture.json"
+      render "$TPL/tests-setup/exemple-fixture.json" "$TARGET/back/tests/fixtures/exemple.fixture.json"
+    else
+      render "$TPL/tests-setup/exemple-fixture.json" "$TARGET/tests/fixtures/exemple.fixture.json"
     fi
     # Postman — validation rejouable de l'API (package : seulement si --postman)
     if [ "$LAYOUT" = "front-back" ]; then

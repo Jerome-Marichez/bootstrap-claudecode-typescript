@@ -64,6 +64,39 @@ check_hook_test_first() {
     off_silent "$fb/front/tests/unitaire/Panier.spec.tsx" "describe(x)"
 }
 
+# check-test-doubles : pas de mocks, des jeux de données.
+check_hook_test_doubles() {
+  echo "→ Hooks (check-test-doubles)"
+  local hook="$TMP/fb/.claude/hooks/check-test-doubles.sh"
+  local fb="$TMP/fb"
+  ctd() { # ctd <chemin> <contenu>
+    printf '{"tool_name":"Write","tool_input":{"file_path":"%s","content":"%s"}}' "$1" "$2" \
+      | CLAUDE_PROJECT_DIR="$fb" bash "$hook"
+  }
+  ctd_deny() { ctd "$1" "$2" | grep -q '"deny"'; }
+  ctd_pass() { test -z "$(ctd "$1" "$2")"; }
+
+  check "jest.mock refusé" \
+    ctd_deny "$fb/front/tests/unitaire/panier.spec.ts" "jest.mock(../src/services/panier.service)"
+  check "mockResolvedValue refusé" \
+    ctd_deny "$fb/back/tests/integration/api.test.ts" "repo.trouver.mockResolvedValue(rien)"
+  check "vi.mock refusé" \
+    ctd_deny "$fb/front/src/services/panier.service.ts" "vi.mock(./depot)"
+  check "dossier __mocks__ refusé" \
+    ctd_deny "$fb/front/__mocks__/panier.service.ts" "export default {}"
+  check "moduleNameMapper vers un mock refusé" \
+    ctd_deny "$fb/front/jest.config.mjs" "moduleNameMapper: { depot: ./mocks/depot }"
+  check "MSW (setupServer) autorisé" \
+    ctd_pass "$fb/front/tests/integration/panier.integration.spec.ts" "const serveur = setupServer(...gestionnaires)"
+  check "supertest autorisé" \
+    ctd_pass "$fb/back/tests/integration/api.test.ts" "await request(app).get(/produits)"
+  check "jest.fn observateur autorisé" \
+    ctd_pass "$fb/front/tests/unitaire/panier.spec.ts" "const auClic = jest.fn()"
+  off_doubles() { test -z "$(ALLOW_TEST_DOUBLES=1 ctd "$1" "$2")"; }
+  check "ALLOW_TEST_DOUBLES=1 → silence" \
+    off_doubles "$fb/front/tests/unitaire/panier.spec.ts" "jest.mock(../src/services/panier.service)"
+}
+
 check_hook_route_task() {
   echo "→ Hooks (route-task : routage de modèles)"
   local rhook="$TMP/fb/.claude/hooks/route-task.sh"
@@ -120,6 +153,7 @@ check_hook_reminders() {
 check_hooks() {
   check_hook_test_location
   check_hook_test_first
+  check_hook_test_doubles
   check_hook_route_task
   check_hook_reminders
 }
