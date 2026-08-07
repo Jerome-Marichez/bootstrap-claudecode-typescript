@@ -97,6 +97,66 @@ check_hook_test_doubles() {
     off_doubles "$fb/front/tests/unitaire/panier.spec.ts" "jest.mock(../src/services/panier.service)"
 }
 
+# check-ci-before-publish : la pipeline fait foi avant toute publication.
+# Un faux gh, déposé en tête de PATH, rend l'état de la CI déterministe : il
+# répond un run list dont le headSha est bien celui de HEAD (sinon le hook
+# conclurait « aucun run pour ce commit » et le test ne prouverait rien).
+check_hook_ci_publish() {
+  echo "→ Hooks (check-ci-before-publish)"
+  local hook="$TMP/single/.claude/hooks/check-ci-before-publish.sh"
+  local bin="$TMP/fakebin-gh"
+  mkdir -p "$bin"
+  cat > "$bin/gh" <<'FAKE'
+#!/bin/sh
+case "$*" in
+  *"run list"*)
+    printf '[{"headSha":"%s","status":"%s","conclusion":%s,"workflowName":"ci-dev-tests"}]' \
+      "$(git rev-parse HEAD)" "${FAKE_STATUS:-completed}" "${FAKE_CONCLUSION:-\"failure\"}" ;;
+  *) exit 1 ;;
+esac
+FAKE
+  chmod +x "$bin/gh"
+
+  cip() { # cip <commande shell> — payload Bash, exécuté depuis le projet généré
+    printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$1" \
+      | (cd "$TMP/single" && PATH="$bin:$PATH" bash "$hook")
+  }
+  cip_deny() { cip "$1" | grep -q '"deny"'; }
+  cip_ask()  { cip "$1" | grep -q '"ask"'; }
+  cip_pass() { test -z "$(cip "$1")"; }
+  vert() { test -z "$(printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$1" \
+    | (cd "$TMP/single" && PATH="$bin:$PATH" FAKE_CONCLUSION='"success"' bash "$hook"))"; }
+  encours() { printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$1" \
+    | (cd "$TMP/single" && PATH="$bin:$PATH" FAKE_STATUS=in_progress FAKE_CONCLUSION=null bash "$hook") \
+    | grep -q 'EN COURS'; }
+
+  check "push sur main, CI rouge → refusé"   cip_deny "git push origin main"
+  check "push sur main, CI verte → autorisé" vert     "git push origin main"
+  check "push sur main, CI en cours → refusé" encours "git push origin main"
+  check "npm publish, CI rouge → refusé"     cip_deny "npm publish --access public"
+  check "gh pr merge, CI rouge → refusé"     cip_deny "gh pr merge 12 --squash"
+  check "push d une branche feature → autorisé" cip_pass "git push -u origin feature/panier"
+  check "commande quelconque → autorisée"    cip_pass "make test-unit"
+  check "--no-verify refusé"                 cip_deny "git commit --no-verify -m wip"
+  check "[skip ci] refusé"                   cip_deny "git commit -m 'fix: bidule [skip ci]'"
+  check "gh pr merge --admin refusé"         cip_deny "gh pr merge 12 --admin"
+  check "gh run cancel refusé"               cip_deny "gh run cancel 42"
+  check "désarmement en ligne refusé"        cip_deny "REQUIRE_GREEN_CI=0 git push origin main"
+  check "REQUIRE_GREEN_CI=0 (session) → passe" bash -c \
+    "test -z \"\$(printf '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main\"}}' | (cd '$TMP/single' && PATH='$bin:\$PATH' REQUIRE_GREEN_CI=0 bash '$hook'))\""
+  check "gh absent → confirmation"           bash -c \
+    "printf '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main\"}}' | (cd '$TMP/single' && PATH=/usr/bin:/bin bash '$hook') | grep -q '\"ask\"'"
+
+  check "continue-on-error refusé" bash -c \
+    "printf '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TMP/single/.github/workflows/ci-dev-tests.yml\",\"new_string\":\"    continue-on-error: true\"}}' | bash '$hook' | grep -q '\"deny\"'"
+  check "allow_failure refusé" bash -c \
+    "printf '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TMP/pkg/.gitlab-ci.yml\",\"new_string\":\"  allow_failure: true\"}}' | bash '$hook' | grep -q '\"deny\"'"
+  check "|| true sur un test refusé" bash -c \
+    "printf '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TMP/single/.github/workflows/ci-dev-tests.yml\",\"new_string\":\"        run: make test-unit || true\"}}' | bash '$hook' | grep -q '\"deny\"'"
+  check "workflow inchangé autorisé" bash -c \
+    "test -z \"\$(printf '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TMP/single/.github/workflows/ci-dev-tests.yml\",\"new_string\":\"        run: make test-int\"}}' | bash '$hook')\""
+}
+
 check_hook_route_task() {
   echo "→ Hooks (route-task : routage de modèles)"
   local rhook="$TMP/fb/.claude/hooks/route-task.sh"
@@ -154,6 +214,7 @@ check_hooks() {
   check_hook_test_location
   check_hook_test_first
   check_hook_test_doubles
+  check_hook_ci_publish
   check_hook_route_task
   check_hook_reminders
 }

@@ -29,6 +29,10 @@ git log origin/main..origin/dev --oneline   # ce qui part en prod — doit être
   gh run list --branch dev --limit 10       # tous les checks récents doivent être success
   ```
   (GitLab : `glab ci list --ref dev`.) Un run rouge → **corriger d'abord**, ne pas ouvrir la PR.
+  Ce pré-vol n'est pas qu'une bonne pratique : le hook `check-ci-before-publish.sh`
+  **refuse** toute commande publiante (push vers `main`/`dev`, fusion de PR, tag,
+  release, `npm publish`) tant que la pipeline du commit courant n'est pas verte —
+  et refuse aussi les contournements (`--no-verify`, `[skip ci]`, `--admin`).
 
 ## 2. Ouvrir la PR
 
