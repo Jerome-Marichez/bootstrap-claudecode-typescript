@@ -106,8 +106,14 @@ Règles :
 - **Intégration / e2e** : vérifier d'abord si un test pertinent existe ; sinon, si le
   composant le justifie (frontière API, accès base, auth ; parcours utilisateur critique
   pour e2e), **proposer** son intention à {{OWNER}}.
-- **Pas de mocks des données métier** — utiliser des **jeux de données réalistes** ;
-  seules les frontières (HTTP, base de test) sont pilotées.
+- **Pas de mocks — des jeux de données.** Aucune doublure de module (`jest.mock`,
+  `vi.mock`, `__mocks__`, `sinon.stub`, `mockResolvedValue`…) : les vrais services
+  collaborent entre eux et tournent sur des **jeux de données réalistes** versionnés
+  dans `tests/fixtures/` (`<entite>.fixture.json`). Seules les **frontières** se
+  pilotent : MSW pour le réseau, Supertest ou un vrai serveur (`listen(0)`) pour
+  HTTP, une base de test dédiée pour la persistance ; `jest.fn()`/`jest.spyOn`
+  restent permis pour **observer** un appel. Le hook `check-test-doubles.sh`
+  applique la règle.
 - Les tests **conditionnent la fusion** vers `dev`.
 
 ## Versionnage — Semantic Versioning

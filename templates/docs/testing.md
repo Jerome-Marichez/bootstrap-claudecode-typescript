@@ -78,6 +78,37 @@ describe('CartService.total', () => { /* … */ });
 Le garde-fou complet se désarme par `REQUIRE_TEST_FIRST=0` — décision de {{OWNER}},
 jamais de l'assistant.
 
+## Jeux de données — jamais de mocks
+
+Un test qui remplace la logique métier par une doublure ne prouve rien. Ici, les
+**vrais services collaborent entre eux** et tournent sur des **jeux de données
+réalistes**, versionnés :
+
+| | Emplacement | Nommage |
+|---|---|---|
+<!-- >>only:front-back -->
+| Jeux de données | `front/tests/fixtures/`, `back/tests/fixtures/` | `<entite>.fixture.json` |
+<!-- <<only -->
+<!-- >>only:single,package -->
+| Jeux de données | `tests/fixtures/` | `<entite>.fixture.json` |
+<!-- <<only -->
+
+**Interdit** (refusé par le hook `.claude/hooks/check-test-doubles.sh`) :
+`jest.mock`, `vi.mock`, `jest.unstable_mockModule`, un dossier `__mocks__/`,
+`sinon.stub` / `sinon.mock`, `mockResolvedValue` / `mockReturnValue` /
+`mockImplementation`, `proxyquire`, ou un `moduleNameMapper` qui redirige un module
+vers un mock.
+
+**Autorisé, parce que ce sont des frontières et non des doublures de métier** :
+
+- **MSW** (`setupServer`) à la frontière réseau — les réponses viennent des fixtures ;
+- **Supertest** ou un **vrai serveur** (`listen(0)`) pour le niveau système ;
+- une **base de test dédiée** (jamais celle de dev/prod), rechargée depuis les fixtures ;
+- `jest.fn()` / `jest.spyOn` pour **observer** un appel (callback, événement) sans
+  remplacer un module métier.
+
+Le hook se désarme par `ALLOW_TEST_DOUBLES=1` — décision de {{OWNER}}, à justifier.
+
 ## Qualité des tests — mutation testing (Stryker)
 
 **Stryker** mesure la capacité des tests unitaires/intégration à détecter de vraies

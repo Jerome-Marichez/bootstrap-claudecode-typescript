@@ -135,9 +135,11 @@ check "compose : services front et back" bash -c "grep -q '  front:' '$TMP/fb/do
 check "Makefile sans cible TODO"         bash -c "! grep -qi 'TODO' '$TMP/fb/Makefile'"
 check "tableau de tests front/back (CLAUDE.md)" grep -q 'front/tests/unitaire' "$TMP/fb/CLAUDE.md"
 check "test d'exemple front + back"      bash -c "test -f '$TMP/fb/front/tests/unitaire/exemple.spec.ts' && test -f '$TMP/fb/back/tests/unitaire/exemple.test.ts'"
+check "jeux de données front + back"     bash -c "test -f '$TMP/fb/front/tests/fixtures/exemple.fixture.json' && test -f '$TMP/fb/back/tests/fixtures/exemple.fixture.json'"
 
 echo "→ Layout single (Vite, git)"
 check "tests/systeme + Postman"          test -f "$TMP/single/tests/systeme/postman_collection.json"
+check "jeu de données d'exemple"         bash -c "jq -e '.produits[0].id' '$TMP/single/tests/fixtures/exemple.fixture.json' >/dev/null"
 check "ci-main-system présent"           test -f "$TMP/single/.github/workflows/ci-main-system.yml"
 check "release-main présent"             grep -q 'jq -r .version package.json' "$TMP/single/.github/workflows/release-main.yml"
 check "config Vite + index.html"         bash -c "test -f '$TMP/single/vite.config.ts' && test -f '$TMP/single/index.html' && test -f '$TMP/single/src/main.tsx'"
@@ -154,6 +156,7 @@ check "issue GitLab sans frontmatter"    bash -c "! grep -q '^name:' '$TMP/pkg/.
 check ".gitlab-ci.yml sans job e2e"      bash -c "! grep -q '^e2e:' '$TMP/pkg/.gitlab-ci.yml'"
 check ".gitlab-ci.yml sans job system"   bash -c "! grep -q '^system:' '$TMP/pkg/.gitlab-ci.yml'"
 check ".gitlab-ci.yml avec job release"  grep -q '^release:' "$TMP/pkg/.gitlab-ci.yml"
+check "tests/fixtures créé (lib)"        test -d "$TMP/pkg/tests/fixtures"
 check "Makefile sans cible storybook"    bash -c "! grep -q '^storybook' '$TMP/pkg/Makefile'"
 check "Makefile valide après filtrage"   make -C "$TMP/pkg" -n help
 check "pas de mention Storybook (README/CLAUDE)" bash -c "! grep -qi storybook '$TMP/pkg/README.md' '$TMP/pkg/CLAUDE.md'"

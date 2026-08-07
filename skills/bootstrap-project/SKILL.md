@@ -74,13 +74,14 @@ le générateur prend le compte connecté à la CLI GitHub (`gh api user`), à d
 Le générateur crée un projet **immédiatement fonctionnel** : README.md, CLAUDE.md,
 docs/ (14 docs, adaptées au layout), .claude/ (hooks : routage de modèles
 `route-task.sh`, test avant code écrit par le développeur (`require-test-first.sh`),
-emplacement des tests, 300 lignes, dépendances, rappels doc/tests ;
+pas de mocks (`check-test-doubles.sh`), emplacement des tests, 300 lignes,
+dépendances, rappels doc/tests ;
 settings.json ; subagents `opus-architect`/`opus-dev`/`opus-frontend` (si UI)/`haiku-mechanic` ; skills
 `/create-issue`, `/create-feat`, `/merge-prod`), **package.json + tsconfig.json
 câblés** (Zod, Jest, Biome ; Next.js ou Vite réellement installés selon le
 framework ; serveur back node:http minimal en front-back ; tsup en package),
 structure de tests + configs Jest/Stryker/Cypress/Postman + test d'exemple qui
-passe, `src/interfaces/` (entités `IXxx` + `types.ts`), `src/schemas/` (validation
+passe + `tests/fixtures/` avec un jeu de données d'exemple, `src/interfaces/` (entités `IXxx` + `types.ts`), `src/schemas/` (validation
 **Zod**), `src/{components,views,hooks,services,utils}`, `shared/{interfaces,schemas}`
 (front-back), **Docker** (Dockerfile multi-stage + docker-compose.yml + .env.example,
 sauf package), Makefile aux cibles réelles (install/dev/build/lint/test-*),
