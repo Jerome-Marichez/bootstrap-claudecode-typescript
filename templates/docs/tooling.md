@@ -26,6 +26,7 @@ make lint
 | Hook | Événement | Rôle |
 |------|-----------|------|
 | `route-task.sh` | UserPromptSubmit | Classifie la demande (architecture / feature / mécanique) et recommande le subagent adapté (voir [`model-routing.md`](./model-routing.md)) ; plafonne les recommandations si le budget crédits est bas (`CREDITS_LIMIT_TOKENS`). |
+| `require-test-first.sh` | PreToolUse (Write/Edit/MultiEdit) | Impose l'ordre : le test d'abord, écrit par {{OWNER}}. Refuse toute écriture d'un fichier de test par l'assistant (délégation par `TESTS_WRITABLE_BY_ASSISTANT=1`, qui exige alors un en-tête `Intention :`) et demande confirmation avant d'écrire un fichier source qu'aucun test unitaire/intégration/système ne couvre. Désarmement : `REQUIRE_TEST_FIRST=0`. |
 | `check-test-location.sh` | PreToolUse (Write) | Bloque la création d'un fichier de test hors de la convention (`docs/testing.md`). |
 | `check-new-dependency.sh` | PreToolUse (Bash/Write/Edit/MultiEdit) | Nouvelle dépendance : ≥ 3 contributeurs, OU éditeur de confiance (Meta, Google, Amazon, Microsoft, Vercel… extensible via `TRUSTED_ORGS_EXTRA`) avec ≥ 1000 étoiles ; SemVer obligatoire ; publication > 6 mois → confirmation manuelle. |
 | `check-file-length.sh` | PostToolUse (Write/Edit) | Avertit dès qu'un fichier source dépasse 300 lignes. |

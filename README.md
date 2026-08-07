@@ -72,7 +72,7 @@ connecté à la CLI GitHub (`gh api user`), à défaut `git config user.name` ;
 | `docs/` | 14 docs standards : architecture, testing, ci-cd, git-workflow, docker, tooling, model-routing, security, accessibility, design, storybook, data-model, rgpd, ameliorations — adaptées au layout |
 | `package.json` + `tsconfig.json` | **Câblés et fonctionnels** par layout/framework : Next.js ou Vite + React, Zod, Jest + ts-jest, Biome, Stryker, Cypress ; back node:http minimal (front-back) ; tsup + exports ESM/CJS (package) |
 | Docker | `Dockerfile` multi-stage (`node:24-alpine`) par app + `docker-compose.yml` + `.env.example` — sauf layout package |
-| `.claude/hooks/` | `route-task.sh` (routage de modèles + budget crédits), `check-test-location.sh`, `check-file-length.sh` (300 lignes), `check-new-dependency.sh`, `remind-docs.sh`, `remind-tests.sh` |
+| `.claude/hooks/` | `route-task.sh` (routage de modèles + budget crédits), `require-test-first.sh` (le test d'abord, écrit par le développeur), `check-test-location.sh`, `check-file-length.sh` (300 lignes), `check-new-dependency.sh`, `remind-docs.sh`, `remind-tests.sh` |
 | `.claude/agents/` | `opus-architect` (opus, xhigh), `opus-dev` (opus, medium), `opus-frontend` (opus, medium, si UI), `haiku-mechanic` (haiku) — cibles du routage de modèles |
 | `.claude/settings.json` | Câblage des hooks UserPromptSubmit / PreToolUse / PostToolUse |
 | `.claude/skills/` | `/create-issue` (template d'issue commun obligatoire, sans emoji), `/create-feat` (issue → branche dev → worktree → subagent → PR), `/merge-prod` (PR dev→main, CI vérifiée, merge humain), exemple |
@@ -126,6 +126,7 @@ davantage en exploration et produirait un résultat encore moins conforme.
 | Hook | Événement | Rôle |
 |------|-----------|------|
 | `route-task.sh` | UserPromptSubmit | **Routage de modèles** : classifie la demande (architecture / frontend / développement / mécanique) et recommande le subagent adapté — voir section suivante. Absorbe aussi le **budget crédits** : usage lu via `ccusage` avec **cache 10 min** (`CREDITS_LIMIT_TOKENS` requis) ; > 50 % consommés et reset < 2 h → recommandation plafonnée à opus-dev (effort medium) ; < 50 % et reset < 1 h → message « marge disponible ». |
+| `require-test-first.sh` | PreToolUse (Write/Edit/MultiEdit) | **Le test précède le code, et c'est le développeur qui l'écrit.** Refuse toute écriture d'un fichier de test par l'assistant — il expose l'intention (comportement attendu, cas limites, jeu de données) et le contenu proposé, l'humain pose le fichier ; les jeux de données (`tests/fixtures/`) restent à la charge de l'assistant. Demande confirmation (`ask`) avant d'écrire un fichier source qu'aucun test **unitaire, d'intégration ou système** ne couvre. Délégation par `TESTS_WRITABLE_BY_ASSISTANT=1` — le test doit alors porter un en-tête `Intention :`. Désarmement complet : `REQUIRE_TEST_FIRST=0`. |
 | `check-test-location.sh` | PreToolUse (Write) | Bloque la création d'un fichier de test (`*.spec.*`, `*.test.*`, `*.cy.ts` — ts/tsx/js/jsx) hors de la convention `docs/testing.md`. |
 | `check-new-dependency.sh` | PreToolUse (Bash/Write/Edit/MultiEdit) | Nouvelle dépendance acceptée si **≥ 3 contributeurs ET publication < 6 mois**, OU **éditeur de confiance** (Meta, Google, Vercel, zod, jest… extensible via `TRUSTED_ORGS_EXTRA`) avec **≥ 1000 étoiles** ; version **SemVer** obligatoire (refus si non conforme ou indisponible). Publication > 6 mois hors éditeur de confiance → **confirmation manuelle** (paquet mature vs abandonné), plus de refus sec. |
 | `check-file-length.sh` | PostToolUse (Write/Edit) | Alerte dès qu'un fichier source dépasse 300 lignes. |
@@ -164,6 +165,16 @@ et le frontmatter natif `model`/`effort` des subagents Claude Code.
 | unitaire | back | `back/tests/unitaire/` | `*.test.ts` |
 | intégration | back | `back/tests/integration/` | `*.test.ts` |
 | système (vrai serveur HTTP) | back | `back/tests/systeme/` | `*.test.ts` |
+
+**Le test précède le code, et c'est le développeur qui l'écrit.** Le comportement
+attendu est couvert par **au moins l'un des trois niveaux** (unitaire, intégration,
+système) avant que le code existe. L'assistant ne pose pas les tests : il expose
+l'**intention** (comportement attendu, cas limites, jeu de données) et le contenu
+qu'il propose, le développeur pose le fichier, puis le code est écrit pour le faire
+passer — **sans jamais modifier l'intention du test**. Le hook
+`require-test-first.sh` applique la règle (délégation ponctuelle par
+`TESTS_WRITABLE_BY_ASSISTANT=1`, qui exige alors un en-tête `Intention :` dans le
+test ; désarmement complet par `REQUIRE_TEST_FIRST=0`).
 
 ## Règle des 300 lignes
 

@@ -22,6 +22,10 @@ check() { # check "description" <commande...>
   fi
 }
 
+# Assertions de comportement des hooks — extraites pour tenir les 300 lignes.
+# shellcheck source=scripts/lib/smoke-hooks.sh
+. "$ROOT/scripts/lib/smoke-hooks.sh"
+
 echo "→ Syntaxe des scripts"
 for f in "$ROOT"/scripts/*.sh "$ROOT"/scripts/lib/*.sh \
          "$ROOT"/templates/hooks/*.sh "$ROOT"/templates/scripts/*.sh; do
@@ -173,66 +177,7 @@ check "make -n test-acceptance (fb)" make -C "$TMP/fb" -n test-acceptance
 check "make -n docker-up (single)"   make -C "$TMP/single" -n docker-up
 check "make -n build (pkg)"          make -C "$TMP/pkg" -n build
 
-echo "→ Hooks (check-test-location)"
-hook="$TMP/fb/.claude/hooks/check-test-location.sh"
-payload() { printf '{"tool_name":"Write","tool_input":{"file_path":"%s"}}' "$1"; }
-allowed() { test -z "$(payload "$1" | bash "$hook")"; }
-denied()  { payload "$1" | bash "$hook" | grep -q '"deny"'; }
-check "acceptance .test.ts autorisé"           allowed "$TMP/fb/tests/acceptance/uat/securite/dispo.test.ts"
-check "unitaire front au bon endroit autorisé" allowed "$TMP/fb/front/tests/unitaire/Button.spec.tsx"
-check "spec unitaire hors convention refusé"   denied  "$TMP/fb/front/src/components/Button.spec.tsx"
-check "test back hors convention refusé"       denied  "$TMP/fb/back/src/services/cart.test.ts"
-check "test .tsx hors convention refusé"       denied  "$TMP/fb/back/src/services/cart.test.tsx"
-check "test .js hors convention refusé"        denied  "$TMP/fb/src/util.test.js"
-
-echo "→ Hooks (route-task : routage de modèles)"
-rhook="$TMP/fb/.claude/hooks/route-task.sh"
-route() { printf '{"prompt":"%s"}' "$1" | CLAUDE_PROJECT_DIR="$TMP/fb" bash "$rhook"; }
-routes_to() { route "$1" | jq -r '.hookSpecificOutput.additionalContext' | grep -q "$2"; }
-no_output() { test -z "$(route "$1")"; }
-check "architecture → opus-architect"    routes_to "repense l architecture du module de paiement" "opus-architect"
-check "sécurité → opus-architect"        routes_to "ajoute la gestion des tokens auth" "opus-architect"
-check "feature → opus-dev"             routes_to "implémente le tri de la liste des produits par prix" "opus-dev"
-check "mécanique → haiku-mechanic"       routes_to "corrige la typo dans le readme" "haiku-mechanic"
-check "override !! → silence"            no_output "!!repense toute l architecture"
-check "commande slash → silence"         no_output "/merge-prod"
-check "court sans signal → silence"      no_output "ok merci"
-check "journal JSONL écrit"              bash -c "jq -e '.agent' '$TMP/fb/.claude/route-task.log' >/dev/null"
-# CREDITS_LIMIT_TOKENS=0 provoquait une division par zéro. Le bloc budget n'est
-# atteint que si un cache ccusage frais existe : on l'injecte, sinon le test ne
-# vérifierait rien (et aucun appel réseau n'est fait, le cache faisant foi).
-credits_zero_silent() {
-  local dir="$TMP/credits" cache err
-  mkdir -p "$dir"
-  cache="$dir/claude-route-task-$(printf '%s' "$TMP/fb" | cksum | cut -d' ' -f1).json"
-  printf '{"blocks":[{"totalTokens":1000,"endTime":"2099-01-01T00:00:00.000Z"}]}' > "$cache"
-  err=$(printf '{"prompt":"implémente le tri de la liste des produits"}' \
-    | CLAUDE_PROJECT_DIR="$TMP/fb" TMPDIR="$dir" CREDITS_LIMIT_TOKENS=0 bash "$rhook" 2>&1 >/dev/null)
-  [ -z "$err" ]
-}
-check "CREDITS_LIMIT_TOKENS=0 sans erreur" credits_zero_silent
-# Le journal grossissait indéfiniment (une ligne par prompt).
-log_rotates() {
-  local log="$TMP/fb/.claude/route-task.log" n
-  seq 1 60 | sed 's/.*/{"ts":"x","class":"c","agent":"a","words":1}/' > "$log"
-  printf '{"prompt":"implémente le tri de la liste des produits"}' \
-    | CLAUDE_PROJECT_DIR="$TMP/fb" LOG_MAX_LINES=50 bash "$rhook" >/dev/null 2>&1
-  n=$(wc -l < "$log")
-  [ "$n" -le 30 ]
-}
-check "journal tronqué au-delà du seuil" log_rotates
-
-echo "→ Hooks (check-file-length, remind-docs + throttle)"
-flhook="$TMP/fb/.claude/hooks/check-file-length.sh"
-big="$TMP/fb/front/src/services/big.service.ts"
-seq 1 320 | sed 's/^/\/\/ ligne /' > "$big"
-check "fichier > 300 lignes signalé" bash -c "printf '{\"tool_input\":{\"file_path\":\"%s\"}}' '$big' | bash '$flhook' | grep -q 'LIMITE DE TAILLE'"
-rm -f "$big"
-rdhook="$TMP/fb/.claude/hooks/remind-docs.sh"
-rd_payload='{"tool_input":{"file_path":"front/src/services/x.service.ts"}}'
-mkdir -p "$TMP/throttle"
-check "remind-docs : premier rappel émis" bash -c "printf '%s' '$rd_payload' | TMPDIR='$TMP/throttle' bash '$rdhook' | grep -q 'Doc '"
-check "remind-docs : throttle actif"      bash -c "test -z \"\$(printf '%s' '$rd_payload' | TMPDIR='$TMP/throttle' bash '$rdhook')\""
+check_hooks
 
 echo "→ Résolution npm des package.json générés (si réseau)"
 if npm ping >/dev/null 2>&1; then

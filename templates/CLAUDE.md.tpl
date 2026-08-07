@@ -87,13 +87,27 @@ La **qualité** des tests unitaires/intégration est mesurée par **Stryker**
 
 Règles :
 
-- **Unitaire = systématique** : chaque composant / logique créé(e) ou modifié(e) reçoit
-  ses tests unitaires **sans demander**.
+- **Le test précède le code.** Avant d'écrire une ligne d'implémentation, le
+  comportement attendu est couvert par un test — **au moins l'un des trois niveaux**
+  (unitaire, intégration, système) selon ce que le comportement exige ; l'unitaire est
+  le minimum dès qu'il y a de la logique. Le hook `require-test-first.sh` demande
+  confirmation dès qu'un fichier source qu'aucun test ne couvre est écrit.
+- **Le test est écrit par {{OWNER}}, jamais par l'assistant.** L'assistant expose
+  dans le chat l'**intention** du test (comportement attendu, cas limites, niveau
+  visé, jeu de données utilisé) et le contenu qu'il propose ; {{OWNER}} pose le
+  fichier. Le hook refuse toute écriture d'un fichier de test par l'assistant.
+  Délégation ponctuelle possible par {{OWNER}} (`TESTS_WRITABLE_BY_ASSISTANT=1` dans
+  l'environnement de la session) — et même alors, le test doit porter en tête un bloc
+  **`Intention : …`**. Les **jeux de données** ne sont pas des tests : l'assistant
+  peut les préparer.
+- **Le code s'adapte au test, jamais l'inverse.** Faire passer un test ne justifie
+  **jamais** d'en modifier l'intention (assertions affaiblies, cas supprimé, `skip`).
+  Si un test paraît faux, le signaler à {{OWNER}} — ne pas le réécrire.
 - **Intégration / e2e** : vérifier d'abord si un test pertinent existe ; sinon, si le
   composant le justifie (frontière API, accès base, auth ; parcours utilisateur critique
-  pour e2e), **proposer** sa création à {{OWNER}} avant de le créer.
-- **Pas de mocks des données métier** — utiliser des **fixtures** ; seules les
-  frontières (HTTP, base de test) sont pilotées.
+  pour e2e), **proposer** son intention à {{OWNER}}.
+- **Pas de mocks des données métier** — utiliser des **jeux de données réalistes** ;
+  seules les frontières (HTTP, base de test) sont pilotées.
 - Les tests **conditionnent la fusion** vers `dev`.
 
 ## Versionnage — Semantic Versioning
